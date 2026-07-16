@@ -103,8 +103,10 @@ namespace CellsOfInterest
 
         private static void AddDelivery(GameObject go, List<CoiEntry> entries)
         {
-            if (go.GetComponent<ManualDeliveryKG>() == null)
-                return;
+            // Delivery/approach is Storage-driven: the game puts an OffsetGroups reachability
+            // table on every Storage (Storage.OnPrefabInit), and any Storage means dupe traffic
+            // (deliver in / fetch out) at those cells. ManualDeliveryKG is NOT required —
+            // Storage Bins and Graves are fetch-driven and have none.
             var storage = go.GetComponent<Storage>();
             if (storage == null)
                 return;
