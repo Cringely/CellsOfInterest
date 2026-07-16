@@ -88,16 +88,18 @@ namespace CellsOfInterest
                 //  - Repairable: BuildingDef.Repairable defaults to true (BuildingDef.cs:74) and
                 //    BuildingLoader.cs:214-216 calls UpdateComponentRequirement<Repairable> for any
                 //    def with Repairable == true, i.e. almost every building unless it opts out.
-                // Without this skip, both fall into the unknown-subclass fallback below and get a
-                // candidate pivot tint on every tile/ladder/drywall (spec bug: tints on ALL buildings).
+                //  - Door: Door : Workable, toggle errand is incidental to placement planning
+                //    (user-directed exclusion: door open/close/lock UI should not tint cells).
+                // Without this skip, maintenance Workables fall into the unknown-subclass fallback
+                // below and get a candidate pivot tint on every tile/ladder/drywall (spec bug: tints
+                // on ALL buildings).
                 //
                 // Deliberately NOT excluded: Demolishable (added per-config via
-                // BuildingTemplates.ExtendBuildingToGravitas, not universal) and Door's own Workable
-                // (Door : Workable, but door-specific, not universal either). Both stay on the
+                // BuildingTemplates.ExtendBuildingToGravitas, not universal). It stays on the
                 // unknown-Workable candidate-pivot fallback path, same as any other operational
                 // interaction Workable (e.g. Sleepable, the manual generator wheel) that players
                 // rely on for automation-sensor placement.
-                if (w is Deconstructable || w is Repairable)
+                if (w is Deconstructable || w is Repairable || w is Door)
                     continue;
 
                 // Explicit single offset set by the config (deterministic, rotates with the building).
