@@ -17,6 +17,22 @@ namespace CellsOfInterest
         private const float Padding = 8f;
         private const float LabelGap = 6f;
 
+        // Fallback anchor (bottom-right of ssOverlayCanvas) used whenever OverlayLegend isn't
+        // present/active — e.g. the selected building's ViewMode is None, so the game never
+        // shows its own overlay box.
+        private const float FallbackOffsetX = -12f;
+        private const float FallbackOffsetY = 220f;
+
+        // Gap between our panel's right edge and OverlayLegend's left edge when docked beside it.
+        // No standard inter-panel spacing constant was evident in the OverlayLegend/OverlayScreen
+        // decompile, so this keeps the value this feature shipped with.
+        private const float OverlayGapPx = 8f;
+
+        // Positioner throttle: OverlayLegend's active rect can appear/move a frame after our
+        // Show(), and again whenever the player switches buildings, so recheck a few times a
+        // second rather than once at Show() only.
+        private const float RepositionIntervalSeconds = 0.25f;
+
         private static readonly (Color color, string label)[] Rows =
         {
             (new Color(0.20f, 0.85f, 0.25f, 1f), "Dupe works here"),
@@ -39,6 +55,7 @@ namespace CellsOfInterest
                 return; // no screen-space canvas yet (e.g. called before GameScreenManager exists)
             refs++;
             panel.SetActive(true);
+            Reposition(); // don't wait for the next throttled recheck to land in the right spot
         }
 
         public static void Hide()
@@ -74,7 +91,7 @@ namespace CellsOfInterest
             rt.anchorMin = new Vector2(1f, 0f);
             rt.anchorMax = new Vector2(1f, 0f);
             rt.pivot = new Vector2(1f, 0f);
-            rt.anchoredPosition = new Vector2(-12f, 220f);
+            rt.anchoredPosition = new Vector2(FallbackOffsetX, FallbackOffsetY);
             rt.sizeDelta = new Vector2(PanelWidth, Rows.Length * RowHeight + Padding * 2f);
 
             for (int i = 0; i < Rows.Length; i++)
@@ -111,7 +128,96 @@ namespace CellsOfInterest
                 labelRt.sizeDelta = new Vector2(PanelWidth - Padding * 2f - SwatchSize - LabelGap, RowHeight);
             }
 
+            panel.AddComponent<Positioner>();
+
             panel.SetActive(false);
+        }
+
+        // Repositions our panel flush to the left of the game's OverlayLegend box (the "Plumbing
+        // Overlay" / "Power Overlay" panel shown while a ViewMode overlay is active), vertically
+        // centered on it. Falls back to the fixed bottom-right anchor when OverlayLegend isn't
+        // present/active (e.g. the current building's ViewMode is None, so the game never shows it).
+        private static void Reposition()
+        {
+            if (panel == null)
+                return;
+
+            var rt = panel.GetComponent<RectTransform>();
+            var parentRt = panel.transform.parent as RectTransform;
+            if (parentRt == null)
+                return;
+
+            RectTransform overlayRt = ResolveOverlayLegendRect();
+            if (overlayRt == null)
+            {
+                rt.anchoredPosition = new Vector2(FallbackOffsetX, FallbackOffsetY);
+                return;
+            }
+
+            // anchorMin == anchorMax == (1, 0) (bottom-right pivot), so anchoredPosition is measured
+            // from the parent rect's (xMax, yMin) corner - reproduce that reference point here so we
+            // can go straight from "desired pivot position" to anchoredPosition without touching anchors.
+            Rect parentRect = parentRt.rect;
+            Vector2 referencePoint = new Vector2(parentRect.xMax, parentRect.yMin);
+
+            var corners = new Vector3[4]; // GetWorldCorners order: bottom-left, top-left, top-right, bottom-right
+            overlayRt.GetWorldCorners(corners);
+
+            Camera fromCam = CanvasCameraFor(overlayRt);
+            Camera toCam = CanvasCameraFor(parentRt);
+
+            Vector2 screenTopLeft = RectTransformUtility.WorldToScreenPoint(fromCam, corners[1]);
+            Vector2 screenBottomLeft = RectTransformUtility.WorldToScreenPoint(fromCam, corners[0]);
+
+            RectTransformUtility.ScreenPointToLocalPointInRectangle(parentRt, screenTopLeft, toCam, out Vector2 localTopLeft);
+            RectTransformUtility.ScreenPointToLocalPointInRectangle(parentRt, screenBottomLeft, toCam, out Vector2 localBottomLeft);
+
+            float overlayLeftX = localTopLeft.x;
+            float overlayCenterY = (localTopLeft.y + localBottomLeft.y) * 0.5f;
+            float panelHeight = rt.rect.height;
+
+            Vector2 desiredPivot = new Vector2(overlayLeftX - OverlayGapPx, overlayCenterY - panelHeight * 0.5f);
+            rt.anchoredPosition = desiredPivot - referencePoint;
+        }
+
+        // OverlayLegend.Instance is the game's own singleton (OverlayLegend.cs:53: `public static
+        // OverlayLegend Instance;`, assigned in OnSpawn, cleared in OnLoadLevel) - reading it is a
+        // static field access, not a scene scan, so there's nothing worth caching on top of it.
+        // ClearLegend() -> Show(show:false) -> KScreen.Show(bool) -> `gameObject.SetActive(show)`
+        // (confirmed in the real game assembly's decompile, not just the stripped modding stub),
+        // so activeInHierarchy is exactly "no overlay box right now."
+        private static RectTransform ResolveOverlayLegendRect()
+        {
+            OverlayLegend instance = OverlayLegend.Instance;
+            if (instance == null || !instance.gameObject.activeInHierarchy)
+                return null;
+            return instance.transform as RectTransform;
+        }
+
+        private static Camera CanvasCameraFor(RectTransform rt)
+        {
+            Canvas canvas = rt.GetComponentInParent<Canvas>();
+            if (canvas == null)
+                return null;
+            canvas = canvas.rootCanvas;
+            return canvas.renderMode == RenderMode.ScreenSpaceOverlay ? null : canvas.worldCamera;
+        }
+
+        // A few-times-a-second recheck: OverlayLegend's active rect can appear a frame after our
+        // Show(), and its position/visibility changes as the player switches between buildings while
+        // the build tool stays active, so Show() alone isn't enough to stay docked correctly.
+        private sealed class Positioner : MonoBehaviour
+        {
+            private float nextCheckTime;
+
+            private void LateUpdate()
+            {
+                float now = Time.unscaledTime;
+                if (now < nextCheckTime)
+                    return;
+                nextCheckTime = now + RepositionIntervalSeconds;
+                Reposition();
+            }
         }
 
         private static TMP_FontAsset FindFont()
