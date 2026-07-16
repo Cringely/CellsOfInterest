@@ -11,7 +11,7 @@ namespace CellsOfInterest
     // can interleave — this is refcounted rather than a bool so no ordering assumption is needed.
     public static class CoiLegend
     {
-        private const float PanelWidth = 210f;
+        private const float PanelWidth = 250f;
         private const float RowHeight = 20f;
         private const float SwatchSize = 16f;
         private const float Padding = 8f;
@@ -37,8 +37,7 @@ namespace CellsOfInterest
         {
             (new Color(0.20f, 0.85f, 0.25f, 1f), "Dupe works here"),
             (new Color(0.25f, 0.55f, 0.95f, 1f), "Delivery / fetch approach"),
-            (new Color(0.95f, 0.60f, 0.15f, 1f), "Output drops here"),
-            (new Color(0.5f, 0.5f, 0.5f, 0.5f), "Faint = one of several possible cells"),
+            (new Color(0.95f, 0.60f, 0.15f, 1f), "Output/Discharge"),
         };
 
         private static GameObject panel;
