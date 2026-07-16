@@ -81,6 +81,23 @@ namespace CellsOfInterest
                 if (w is Storage)
                     continue; // delivery, handled below
 
+                // Maintenance/incidental workables exist on essentially every building, not just
+                // ones with an operational cell of interest:
+                //  - Deconstructable is added to every building's base template
+                //    (BuildingConfigManager.OnPrefabInit -> baseTemplate.AddComponent<Deconstructable>()).
+                //  - Repairable is added to every building whose def opts in, which is the default
+                //    (BuildingDef.Repairable = true; BuildingLoader.cs applies
+                //    UpdateComponentRequirement<Repairable> for any def with Repairable == true).
+                //  - Demolishable is added by BuildingTemplates.ExtendBuildingToGravitas to specific
+                //    decor/fossil buildings; its chore is destroy-only, never an operational stand.
+                //  - Door is itself a Workable (Door : Workable) and every door carries one. Its
+                //    WorkChore<Door> only fires for a manual lock/open/close toggle — incidental,
+                //    not the operational path (dupes open doors by walking through them).
+                // Without this skip, every tile/ladder/drywall/door falls into the unknown-subclass
+                // fallback below and gets a candidate pivot tint (spec bug: tints on ALL buildings).
+                if (w is Deconstructable || w is Repairable || w is Demolishable || w is Door)
+                    continue;
+
                 // Explicit single offset set by the config (deterministic, rotates with the building).
                 if (TryExplicitOffset(w, out var cell))
                 {
