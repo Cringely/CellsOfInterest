@@ -81,21 +81,23 @@ namespace CellsOfInterest
                 if (w is Storage)
                     continue; // delivery, handled below
 
-                // Maintenance/incidental workables exist on essentially every building, not just
-                // ones with an operational cell of interest:
-                //  - Deconstructable is added to every building's base template
-                //    (BuildingConfigManager.OnPrefabInit -> baseTemplate.AddComponent<Deconstructable>()).
-                //  - Repairable is added to every building whose def opts in, which is the default
-                //    (BuildingDef.Repairable = true; BuildingLoader.cs applies
-                //    UpdateComponentRequirement<Repairable> for any def with Repairable == true).
-                //  - Demolishable is added by BuildingTemplates.ExtendBuildingToGravitas to specific
-                //    decor/fossil buildings; its chore is destroy-only, never an operational stand.
-                //  - Door is itself a Workable (Door : Workable) and every door carries one. Its
-                //    WorkChore<Door> only fires for a manual lock/open/close toggle — incidental,
-                //    not the operational path (dupes open doors by walking through them).
-                // Without this skip, every tile/ladder/drywall/door falls into the unknown-subclass
-                // fallback below and gets a candidate pivot tint (spec bug: tints on ALL buildings).
-                if (w is Deconstructable || w is Repairable || w is Demolishable || w is Door)
+                // Skip ONLY the maintenance Workables verified as added to every building by the
+                // game's own universal building setup, not by any per-config opt-in:
+                //  - Deconstructable: BuildingConfigManager.OnPrefabInit ->
+                //    baseTemplate.AddComponent<Deconstructable>() (every building's base template).
+                //  - Repairable: BuildingDef.Repairable defaults to true (BuildingDef.cs:74) and
+                //    BuildingLoader.cs:214-216 calls UpdateComponentRequirement<Repairable> for any
+                //    def with Repairable == true, i.e. almost every building unless it opts out.
+                // Without this skip, both fall into the unknown-subclass fallback below and get a
+                // candidate pivot tint on every tile/ladder/drywall (spec bug: tints on ALL buildings).
+                //
+                // Deliberately NOT excluded: Demolishable (added per-config via
+                // BuildingTemplates.ExtendBuildingToGravitas, not universal) and Door's own Workable
+                // (Door : Workable, but door-specific, not universal either). Both stay on the
+                // unknown-Workable candidate-pivot fallback path, same as any other operational
+                // interaction Workable (e.g. Sleepable, the manual generator wheel) that players
+                // rely on for automation-sensor placement.
+                if (w is Deconstructable || w is Repairable)
                     continue;
 
                 // Explicit single offset set by the config (deterministic, rotates with the building).
