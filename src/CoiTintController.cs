@@ -25,6 +25,7 @@ namespace CellsOfInterest
         private int lastCell = -1;
         private Orientation? lastOrientation;
         private float nextRefresh;
+        private bool legendShown;
 
         private void Start()
         {
@@ -32,7 +33,11 @@ namespace CellsOfInterest
             if (building != null && building.Def != null)
                 data = CoiResolver.Get(building.Def);
             rotatable = GetComponent<Rotatable>();
-            CoiLegend.Show();
+            if (data.Entries.Length > 0)
+            {
+                CoiLegend.Show();
+                legendShown = true;
+            }
         }
 
         private void LateUpdate()
@@ -113,7 +118,8 @@ namespace CellsOfInterest
                 if (img != null)
                     Object.Destroy(img.gameObject);
             pool.Clear();
-            CoiLegend.Hide();
+            if (legendShown)
+                CoiLegend.Hide();
         }
     }
 }
