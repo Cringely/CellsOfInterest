@@ -27,7 +27,7 @@ namespace CellsOfInterest
     public sealed class CoiData
     {
         public CoiEntry[] Entries;
-        public static readonly CoiData Empty = new CoiData { Entries = new CoiEntry[0] };
+        public static readonly CoiData Empty = new CoiData { Entries = Array.Empty<CoiEntry>() };
     }
 
     public static class CoiResolver
@@ -135,11 +135,11 @@ namespace CellsOfInterest
             CellOffset[][] table = storage.useWideOffsets
                 ? OffsetGroups.InvertedWideTable
                 : OffsetGroups.InvertedStandardTable;
-            var seen = new HashSet<int>();
+            var seen = new HashSet<(int, int)>();
             foreach (var row in table)
             {
                 var c = row[0];
-                if (seen.Add((c.x << 16) ^ (c.y & 0xFFFF)))
+                if (seen.Add((c.x, c.y)))
                     entries.Add(CoiEntry.AtCell(CoiClass.Delivery, c, deterministic: false, rotates: false));
             }
         }

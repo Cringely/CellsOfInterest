@@ -1,11 +1,15 @@
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.UI;
 
 namespace CellsOfInterest
 {
     // Attached to BuildTool's preview visualizer by BuildToolPatch. Lifetime = the preview's:
     // the game Destroys the visualizer on tool deactivate and on building re-selection
-    // (BuildTool.cs:54-57, 96-107), which destroys this controller and its child quads.
+    // (BuildTool.cs:54-57, 96-107), which destroys this controller. The tint quads themselves
+    // are parented to GameScreenManager.worldSpaceCanvas (not this transform) so they render as
+    // UI Images and stay colored under the build-mode desaturation post effect the way vanilla's
+    // port icons do (EntityCellVisualizer.DrawUtilityIcon); OnDestroy cleans them up explicitly.
     public sealed class CoiTintController : MonoBehaviour
     {
         private const float RefreshSeconds = 0.5f; // cadence re-check of Grid.Solid (spec: staleness receipt)
@@ -15,13 +19,11 @@ namespace CellsOfInterest
         private static readonly Color DeliveryColor = new Color(0.25f, 0.55f, 0.95f);
         private static readonly Color OutputColor = new Color(0.95f, 0.60f, 0.15f);
 
-        private static Sprite whiteSprite;
-
         private CoiData data = CoiData.Empty;
         private Rotatable rotatable;
-        private readonly List<SpriteRenderer> pool = new List<SpriteRenderer>();
+        private readonly List<Image> pool = new List<Image>();
         private int lastCell = -1;
-        private Orientation lastOrientation = (Orientation)(-1);
+        private Orientation? lastOrientation;
         private float nextRefresh;
 
         private void Start()
@@ -77,7 +79,7 @@ namespace CellsOfInterest
                         continue; // candidate stand cell currently blocked: drop
 
                     var quad = GetQuad(used++);
-                    quad.transform.position = Grid.CellToPosCCC(cell, Grid.SceneLayer.FXFront2);
+                    quad.transform.SetPosition(Grid.CellToPosCCC(cell, Grid.SceneLayer.FXFront2));
                     Color c = e.Cls == CoiClass.Work ? WorkColor
                             : e.Cls == CoiClass.Delivery ? DeliveryColor
                             : OutputColor;
@@ -90,30 +92,26 @@ namespace CellsOfInterest
                 pool[i].gameObject.SetActive(false);
         }
 
-        private SpriteRenderer GetQuad(int index)
+        private Image GetQuad(int index)
         {
             while (pool.Count <= index)
             {
                 var go = new GameObject("CoiTint");
-                // Parent for lifetime only; positions are set in world space every redraw.
-                go.transform.SetParent(transform, worldPositionStays: false);
-                var sr = go.AddComponent<SpriteRenderer>();
-                sr.sprite = WhiteSprite();
-                pool.Add(sr);
+                go.transform.SetParent(GameScreenManager.Instance.worldSpaceCanvas.transform, worldPositionStays: false);
+                var img = go.AddComponent<Image>();
+                img.raycastTarget = false;              // must never block build clicks
+                img.rectTransform.sizeDelta = Vector2.one; // canvas units are world units: one cell
+                pool.Add(img);
             }
             return pool[index];
         }
 
-        private static Sprite WhiteSprite()
+        private void OnDestroy()
         {
-            if (whiteSprite == null)
-            {
-                var tex = Texture2D.whiteTexture; // 4x4 white
-                // pixelsPerUnit = texture width -> sprite is exactly 1x1 world units = one cell.
-                whiteSprite = Sprite.Create(tex, new Rect(0f, 0f, tex.width, tex.height),
-                    new Vector2(0.5f, 0.5f), tex.width);
-            }
-            return whiteSprite;
+            foreach (var img in pool)
+                if (img != null)
+                    Object.Destroy(img.gameObject);
+            pool.Clear();
         }
     }
 }
