@@ -110,17 +110,20 @@ namespace CellsOfInterest
                 return;
 
             // Explicit delivery-offset overrides (spec cache-input list: CreatureDeliveryPoint
-            // and Grave call Storage.SetOffsets(deliveryOffsets) at spawn). Field is on the
-            // sibling component, readable on the prefab; deterministic, rotates like other
-            // explicit offsets.
+            // instance field deliveryOffsets (OnPrefabInit), Grave static DELIVERY_OFFSETS
+            // (OnSpawn); both applied via Storage.SetOffsets). Fields readable on the prefab;
+            // deterministic, rotates like other explicit offsets.
             foreach (var comp in go.GetComponents<KMonoBehaviour>())
             {
-                var f = AccessTools.Field(comp.GetType(), "deliveryOffsets");
-                if (f != null && f.FieldType == typeof(CellOffset[]) && f.GetValue(comp) is CellOffset[] overrides && overrides.Length > 0)
+                foreach (var fieldName in new[] { "deliveryOffsets", "DELIVERY_OFFSETS" })
                 {
-                    foreach (var c in overrides)
-                        entries.Add(CoiEntry.AtCell(CoiClass.Delivery, c, deterministic: true, rotates: true));
-                    return;
+                    var f = AccessTools.Field(comp.GetType(), fieldName);
+                    if (f != null && f.FieldType == typeof(CellOffset[]) && f.GetValue(f.IsStatic ? null : comp) is CellOffset[] overrides && overrides.Length > 0)
+                    {
+                        foreach (var c in overrides)
+                            entries.Add(CoiEntry.AtCell(CoiClass.Delivery, c, deterministic: true, rotates: true));
+                        return;
+                    }
                 }
             }
 
