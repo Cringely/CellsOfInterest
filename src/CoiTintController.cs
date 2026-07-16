@@ -32,6 +32,7 @@ namespace CellsOfInterest
             if (building != null && building.Def != null)
                 data = CoiResolver.Get(building.Def);
             rotatable = GetComponent<Rotatable>();
+            CoiLegend.Show();
         }
 
         private void LateUpdate()
@@ -112,6 +113,7 @@ namespace CellsOfInterest
                 if (img != null)
                     Object.Destroy(img.gameObject);
             pool.Clear();
+            CoiLegend.Hide();
         }
     }
 }
