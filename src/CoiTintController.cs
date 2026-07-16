@@ -66,6 +66,8 @@ namespace CellsOfInterest
                         CellOffset off = e.Cell;
                         if (e.Rotates && rotatable != null)
                             off = rotatable.GetRotatedCellOffset(off);
+                        if (!Grid.IsCellOffsetValid(baseCell, off))
+                            continue; // offset crosses the map edge: OffsetCell would wrap into the adjacent row
                         cell = Grid.OffsetCell(baseCell, off);
                     }
 
