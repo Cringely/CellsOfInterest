@@ -83,12 +83,16 @@ namespace CellsOfInterest
                 // Skip ONLY the maintenance Workables verified as added to every building by the
                 // game's own universal building setup, not by any per-config opt-in:
                 //  - Deconstructable: BuildingConfigManager.OnPrefabInit ->
-                //    baseTemplate.AddComponent<Deconstructable>() (every building's base template).
+                //    baseTemplate.AddComponent<Deconstructable>() (BuildingConfigManager.cs:37).
+                //  - BuildingHP: BuildingConfigManager.cs:45 adds BuildingHP to baseTemplate
+                //    (every building's universal template).
                 //  - Repairable: BuildingDef.Repairable defaults to true (BuildingDef.cs:74) and
-                //    BuildingLoader.cs:214-216 calls UpdateComponentRequirement<Repairable> for any
+                //    BuildingLoader.cs:216 calls UpdateComponentRequirement<Repairable> for any
                 //    def with Repairable == true, i.e. almost every building unless it opts out.
                 //  - Door: Door : Workable, toggle errand is incidental to placement planning
                 //    (user-directed exclusion: door open/close/lock UI should not tint cells).
+                // These three (Deconstructable, BuildingHP, Repairable) are the exhaustive set of
+                // universal-template Workables added by the game's own infrastructure.
                 // Without this skip, maintenance Workables fall into the unknown-subclass fallback
                 // below and get a candidate pivot tint on every tile/ladder/drywall (spec bug: tints
                 // on ALL buildings).
@@ -98,7 +102,7 @@ namespace CellsOfInterest
                 // unknown-Workable candidate-pivot fallback path, same as any other operational
                 // interaction Workable (e.g. Sleepable, the manual generator wheel) that players
                 // rely on for automation-sensor placement.
-                if (w is Deconstructable || w is Repairable || w is Door)
+                if (w is Deconstructable || w is Repairable || w is BuildingHP || w is Door)
                     continue;
 
                 // Explicit single offset set by the config (deterministic, rotates with the building).
