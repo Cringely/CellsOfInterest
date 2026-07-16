@@ -16,7 +16,6 @@ namespace CellsOfInterest
         private const float AlphaSolid = 0.55f;
         private const float AlphaCandidate = 0.25f;
         private static readonly Color WorkColor = new Color(0.20f, 0.85f, 0.25f);
-        private static readonly Color DeliveryColor = new Color(0.25f, 0.55f, 0.95f);
         private static readonly Color OutputColor = new Color(0.95f, 0.60f, 0.15f);
 
         private CoiData data = CoiData.Empty;
@@ -86,9 +85,7 @@ namespace CellsOfInterest
 
                     var quad = GetQuad(used++);
                     quad.transform.SetPosition(Grid.CellToPosCCC(cell, Grid.SceneLayer.FXFront2));
-                    Color c = e.Cls == CoiClass.Work ? WorkColor
-                            : e.Cls == CoiClass.Delivery ? DeliveryColor
-                            : OutputColor;
+                    Color c = e.Cls == CoiClass.Work ? WorkColor : OutputColor;
                     c.a = e.Deterministic ? AlphaSolid : AlphaCandidate;
                     quad.color = c;
                     quad.gameObject.SetActive(true);

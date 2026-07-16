@@ -6,7 +6,7 @@ using UnityEngine;
 
 namespace CellsOfInterest
 {
-    public enum CoiClass { Work, Delivery, Output }
+    public enum CoiClass { Work, Output }
 
     public struct CoiEntry
     {
@@ -68,7 +68,6 @@ namespace CellsOfInterest
             var entries = new List<CoiEntry>();
 
             AddWork(go, entries);
-            AddDelivery(go, entries);
             AddOutputs(go, entries);
 
             return entries.Count == 0 ? CoiData.Empty : new CoiData { Entries = entries.ToArray() };
@@ -79,7 +78,7 @@ namespace CellsOfInterest
             foreach (var w in go.GetComponents<Workable>())
             {
                 if (w is Storage)
-                    continue; // delivery, handled below
+                    continue; // pure-storage approach cells are out of scope (2026-07-16 ruling)
 
                 // Skip ONLY the maintenance Workables verified as added to every building by the
                 // game's own universal building setup, not by any per-config opt-in:
@@ -119,49 +118,6 @@ namespace CellsOfInterest
                 // Unknown Workable subclass: it may set offsets in OnPrefabInit where this
                 // resolver cannot see. Pivot as CANDIDATE, never authoritative (spec honesty rule).
                 entries.Add(CoiEntry.AtCell(CoiClass.Work, new CellOffset(0, 0), deterministic: false, rotates: false));
-            }
-        }
-
-        private static void AddDelivery(GameObject go, List<CoiEntry> entries)
-        {
-            // Delivery/approach is Storage-driven: the game puts an OffsetGroups reachability
-            // table on every Storage (Storage.OnPrefabInit), and any Storage means dupe traffic
-            // (deliver in / fetch out) at those cells. ManualDeliveryKG is NOT required —
-            // Storage Bins and Graves are fetch-driven and have none.
-            var storage = go.GetComponent<Storage>();
-            if (storage == null)
-                return;
-
-            // Explicit delivery-offset overrides (spec cache-input list: CreatureDeliveryPoint
-            // instance field deliveryOffsets (OnPrefabInit), Grave static DELIVERY_OFFSETS
-            // (OnSpawn); both applied via Storage.SetOffsets). Fields readable on the prefab;
-            // deterministic, rotates like other explicit offsets.
-            foreach (var comp in go.GetComponents<KMonoBehaviour>())
-            {
-                foreach (var fieldName in new[] { "deliveryOffsets", "DELIVERY_OFFSETS" })
-                {
-                    var f = AccessTools.Field(comp.GetType(), fieldName);
-                    if (f != null && f.FieldType == typeof(CellOffset[]) && f.GetValue(f.IsStatic ? null : comp) is CellOffset[] overrides && overrides.Length > 0)
-                    {
-                        foreach (var c in overrides)
-                            entries.Add(CoiEntry.AtCell(CoiClass.Delivery, c, deterministic: true, rotates: true));
-                        return;
-                    }
-                }
-            }
-
-            // Storage IS a Workable; its approach table is chosen by useWideOffsets
-            // (Storage.OnPrefabInit — field readable on the prefab, tracker is not). Tables are
-            // never rotated by the game. row[0] of each row = candidate stand cell.
-            CellOffset[][] table = storage.useWideOffsets
-                ? OffsetGroups.InvertedWideTable
-                : OffsetGroups.InvertedStandardTable;
-            var seen = new HashSet<(int, int)>();
-            foreach (var row in table)
-            {
-                var c = row[0];
-                if (seen.Add((c.x, c.y)))
-                    entries.Add(CoiEntry.AtCell(CoiClass.Delivery, c, deterministic: false, rotates: false));
             }
         }
 
