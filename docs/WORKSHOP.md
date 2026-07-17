@@ -16,8 +16,8 @@ The colors tell you what each tile does:
 [list]
 [*][b]Green[/b]: a duplicant stands here to work the building.
 [*][b]Faint green[/b]: a duplicant might stand here. The game picks the exact spot later.
-[*][b]Cyan (light blue)[/b]: a liquid comes out here. You need a liquid pipe.
-[*][b]Amber (orange-yellow)[/b]: a gas comes out here. You need a gas pipe.
+[*][b]Cyan (light blue)[/b]: a liquid comes out here.
+[*][b]Amber (orange-yellow)[/b]: a gas comes out here.
 [*][b]Violet (purple)[/b]: a solid item drops on the floor here.
 [/list]
 
