@@ -88,7 +88,7 @@ namespace CellsOfInterest
                 if (w is Storage)
                     continue; // pure-storage approach cells are out of scope (2026-07-16 ruling)
 
-                // Skip ONLY the maintenance Workables verified as added to every building by the
+                // Skip ONLY the maintenance/incidental Workables verified as added to every building by the
                 // game's own universal building setup, not by any per-config opt-in:
                 //  - Deconstructable: BuildingConfigManager.OnPrefabInit ->
                 //    baseTemplate.AddComponent<Deconstructable>() (BuildingConfigManager.cs:37).
@@ -97,10 +97,10 @@ namespace CellsOfInterest
                 //  - Repairable: BuildingDef.Repairable defaults to true (BuildingDef.cs:74) and
                 //    BuildingLoader.cs:216 calls UpdateComponentRequirement<Repairable> for any
                 //    def with Repairable == true, i.e. almost every building unless it opts out.
+                //  - Disinfectable / AutoDisinfectable: disinfect errand is a maintenance task
+                //    present on nearly every building (game universal setup).
                 //  - Door: Door : Workable, toggle errand is incidental to placement planning
                 //    (user-directed exclusion: door open/close/lock UI should not tint cells).
-                // These three (Deconstructable, BuildingHP, Repairable) are the exhaustive set of
-                // universal-template Workables added by the game's own infrastructure.
                 // Without this skip, maintenance Workables fall into the unknown-subclass fallback
                 // below and get a candidate pivot tint on every tile/ladder/drywall (spec bug: tints
                 // on ALL buildings).
@@ -110,7 +110,8 @@ namespace CellsOfInterest
                 // unknown-Workable candidate-pivot fallback path, same as any other operational
                 // interaction Workable (e.g. Sleepable, the manual generator wheel) that players
                 // rely on for automation-sensor placement.
-                if (w is Deconstructable || w is Repairable || w is BuildingHP || w is Door)
+                if (w is Deconstructable || w is Repairable || w is BuildingHP || w is Door
+                    || w is Disinfectable || w is AutoDisinfectable)
                 {
                     sources.Add($"skip:{w.GetType().Name}");
                     continue;
