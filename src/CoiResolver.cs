@@ -46,50 +46,50 @@ namespace CellsOfInterest
                 return CoiData.Empty;
             if (cache.TryGetValue(def, out var data))
                 return data;
-            List<string> sources;
             try
             {
-                (data, sources) = Build(def);
+                data = Build(def);
             }
             catch (Exception e)
             {
                 // A modded building must never crash-loop the build menu (spec: failure handling).
                 Debug.LogWarning($"[CellsOfInterest] resolver failed for {def.PrefabID}: {e}");
                 data = CoiData.Empty;
-                sources = new List<string> { $"EXCEPTION:{e.GetType().Name}" };
             }
             cache[def] = data;
-            // TEMPORARY diagnostic (2026-07-16): log the source of every resolved entry once
-            // per def so we can see ground truth for buildings that should resolve to zero
-            // entries (tiles, ladders, drywall) but are showing tints/legend anyway.
-            Debug.Log($"[CellsOfInterest] resolve {def.PrefabID}: {data.Entries.Length} entries [{string.Join(", ", sources)}]");
             return data;
         }
 
-        private static (CoiData, List<string>) Build(BuildingDef def)
+        private static CoiData Build(BuildingDef def)
         {
-            var sources = new List<string>();
             var go = def.BuildingComplete;
             if (go == null)
-                return (CoiData.Empty, sources);
+                return CoiData.Empty;
             var entries = new List<CoiEntry>();
 
-            AddWork(go, entries, sources);
-            AddOutputs(go, entries, sources);
+            AddWork(go, entries);
+            AddOutputs(go, entries);
 
-            var data = entries.Count == 0 ? CoiData.Empty : new CoiData { Entries = entries.ToArray() };
-            return (data, sources);
+            return entries.Count == 0 ? CoiData.Empty : new CoiData { Entries = entries.ToArray() };
         }
 
-        private static void AddWork(GameObject go, List<CoiEntry> entries, List<string> sources)
+        private static void AddWork(GameObject go, List<CoiEntry> entries)
         {
             foreach (var w in go.GetComponents<Workable>())
             {
                 if (w is Storage)
                     continue; // pure-storage approach cells are out of scope (2026-07-16 ruling)
 
-                // Skip ONLY the maintenance/incidental Workables verified as added to every building by the
-                // game's own universal building setup, not by any per-config opt-in:
+                // Farm/planter tiles: PlantablePlot : SingleEntityReceptacle : Workable is the
+                // seed/fertilizer deposit receptacle. Its pivot is the tile itself, not a machine
+                // work cell, so the candidate tint there is noise. Excluded by user ruling (2026-07-17).
+                // Covers FarmTile, PlanterBox, WideFarmTile, and DLC hydroponic/aquatic farm tiles.
+                if (w is PlantablePlot)
+                    continue;
+
+                // Skip incidental maintenance/errand Workables that are not the building's primary
+                // operation. Some are universal (added to every building), some are per-config opt-ins;
+                // none is a work cell a player plans placement around:
                 //  - Deconstructable: BuildingConfigManager.OnPrefabInit ->
                 //    baseTemplate.AddComponent<Deconstructable>() (BuildingConfigManager.cs:37).
                 //  - BuildingHP: BuildingConfigManager.cs:45 adds BuildingHP to baseTemplate
@@ -104,6 +104,10 @@ namespace CellsOfInterest
                 //  - Toggleable: enable/disable errand on doors, reservoirs, dispensers.
                 //  - Breakable: damage interaction errand.
                 //  - StorageTileSwitchItemWorkable: storage tile item switch errand.
+                //  - DropAllWorkable: the "empty the building's storage" errand, per-config on any
+                //    storage-bearing building (fabricators, refineries, cookers, piped farm tiles). It
+                //    renders at the pivot: redundant with the real work cell where one exists, and the
+                //    wrong signal on storage/piped buildings (surfaced by hydroponic farm tiles 2026-07-17).
                 // Without this skip, errand-adjacent Workables fall into the unknown-subclass fallback
                 // below and get a candidate pivot tint on every tile/ladder/drywall (spec bug: tints
                 // on ALL buildings).
@@ -114,10 +118,9 @@ namespace CellsOfInterest
                 // interaction Workable (e.g. Sleepable, the manual generator wheel) that players
                 // rely on for automation-sensor placement.
                 if (w is Deconstructable || w is Repairable || w is BuildingHP || w is Door
-                    || w is Disinfectable || w is AutoDisinfectable
+                    || w is Disinfectable || w is AutoDisinfectable || w is DropAllWorkable
                     || w is Toggleable || w is Breakable || w.GetType().Name == "StorageTileSwitchItemWorkable")
                 {
-                    sources.Add($"skip:{w.GetType().Name}");
                     continue;
                 }
 
@@ -125,7 +128,6 @@ namespace CellsOfInterest
                 if (TryExplicitOffset(w, out var cell))
                 {
                     entries.Add(CoiEntry.AtCell(CoiClass.Work, cell, deterministic: true, rotates: true));
-                    sources.Add($"Work:explicit:{w.GetType().Name}");
                     continue;
                 }
 
@@ -133,18 +135,16 @@ namespace CellsOfInterest
                 if (w is ComplexFabricatorWorkable)
                 {
                     entries.Add(CoiEntry.AtCell(CoiClass.Work, new CellOffset(0, 0), deterministic: true, rotates: false));
-                    sources.Add($"Work:{w.GetType().Name}");
                     continue;
                 }
 
                 // Unknown Workable subclass: it may set offsets in OnPrefabInit where this
                 // resolver cannot see. Pivot as CANDIDATE, never authoritative (spec honesty rule).
                 entries.Add(CoiEntry.AtCell(CoiClass.Work, new CellOffset(0, 0), deterministic: false, rotates: false));
-                sources.Add($"Work:{w.GetType().Name}");
             }
         }
 
-        private static void AddOutputs(GameObject go, List<CoiEntry> entries, List<string> sources)
+        private static void AddOutputs(GameObject go, List<CoiEntry> entries)
         {
             // All output offsets are UNROTATED by the game at their emission sites
             // (EnergyGenerator.cs:370, ElementConverter.cs:558, ComplexFabricator.cs:1224).
@@ -152,39 +152,24 @@ namespace CellsOfInterest
             if (gen != null && gen.formula.outputs != null)
                 foreach (var o in gen.formula.outputs)
                     if (!o.store)
-                    {
                         entries.Add(CoiEntry.AtCell(CoiClass.Output, o.emitOffset, deterministic: true, rotates: false));
-                        sources.Add("Out:EnergyGenerator");
-                    }
 
             var fab = go.GetComponent<ComplexFabricator>();
             if (fab != null && !fab.storeProduced)
-            {
                 entries.Add(CoiEntry.AtWorld(CoiClass.Output, new Vector2(fab.outputOffset.x, fab.outputOffset.y)));
-                sources.Add("Out:ComplexFabricator");
-            }
 
             var conv = go.GetComponent<ElementConverter>();
             if (conv != null && conv.outputElements != null)
                 foreach (var oe in conv.outputElements)
-                {
                     entries.Add(CoiEntry.AtWorld(CoiClass.Output, oe.outputElementOffset));
-                    sources.Add("Out:ElementConverter");
-                }
 
             var emitter = go.GetComponent<BuildingElementEmitter>();
             if (emitter != null)
-            {
                 entries.Add(CoiEntry.AtWorld(CoiClass.Output, emitter.modifierOffset));
-                sources.Add("Out:BuildingElementEmitter");
-            }
 
             var storage = go.GetComponent<Storage>();
             if (storage != null && storage.dropOffset != Vector2.zero)
-            {
                 entries.Add(CoiEntry.AtWorld(CoiClass.Output, storage.dropOffset));
-                sources.Add("Out:Storage.dropOffset");
-            }
         }
 
         private static bool TryExplicitOffset(Workable w, out CellOffset cell)
