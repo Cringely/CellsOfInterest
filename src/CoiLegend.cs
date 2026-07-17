@@ -35,8 +35,10 @@ namespace CellsOfInterest
 
         private static readonly (Color color, string label)[] Rows =
         {
-            (new Color(0.20f, 0.85f, 0.25f, 1f), "Dupe works here"),
-            (new Color(0.95f, 0.60f, 0.15f, 1f), "Output/Discharge"),
+            (CoiPalette.Work,   "Dupe works here"),
+            (CoiPalette.Liquid, "Liquid output"),
+            (CoiPalette.Gas,    "Gas output"),
+            (CoiPalette.Solid,  "Solid / item drop"),
         };
 
         private static GameObject panel;

@@ -13,10 +13,6 @@ namespace CellsOfInterest
     public sealed class CoiTintController : MonoBehaviour
     {
         private const float RefreshSeconds = 0.5f; // cadence re-check of Grid.Solid (spec: staleness receipt)
-        private const float AlphaSolid = 0.55f;
-        private const float AlphaCandidate = 0.25f;
-        private static readonly Color WorkColor = new Color(0.20f, 0.85f, 0.25f);
-        private static readonly Color OutputColor = new Color(0.95f, 0.60f, 0.15f);
 
         private CoiData data = CoiData.Empty;
         private Rotatable rotatable;
@@ -85,8 +81,8 @@ namespace CellsOfInterest
 
                     var quad = GetQuad(used++);
                     quad.transform.SetPosition(Grid.CellToPosCCC(cell, Grid.SceneLayer.FXFront2));
-                    Color c = e.Cls == CoiClass.Work ? WorkColor : OutputColor;
-                    c.a = e.Deterministic ? AlphaSolid : AlphaCandidate;
+                    Color c = CoiPalette.For(e.Cls, e.Phase);
+                    c.a = e.Deterministic ? CoiPalette.AlphaSolid : CoiPalette.AlphaCandidate;
                     quad.color = c;
                     quad.gameObject.SetActive(true);
                 }
