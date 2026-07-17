@@ -101,7 +101,10 @@ namespace CellsOfInterest
                 //    present on nearly every building (game universal setup).
                 //  - Door: Door : Workable, toggle errand is incidental to placement planning
                 //    (user-directed exclusion: door open/close/lock UI should not tint cells).
-                // Without this skip, maintenance Workables fall into the unknown-subclass fallback
+                //  - Toggleable: enable/disable errand on doors, reservoirs, dispensers.
+                //  - Breakable: damage interaction errand.
+                //  - StorageTileSwitchItemWorkable: storage tile item switch errand.
+                // Without this skip, errand-adjacent Workables fall into the unknown-subclass fallback
                 // below and get a candidate pivot tint on every tile/ladder/drywall (spec bug: tints
                 // on ALL buildings).
                 //
@@ -111,7 +114,8 @@ namespace CellsOfInterest
                 // interaction Workable (e.g. Sleepable, the manual generator wheel) that players
                 // rely on for automation-sensor placement.
                 if (w is Deconstructable || w is Repairable || w is BuildingHP || w is Door
-                    || w is Disinfectable || w is AutoDisinfectable)
+                    || w is Disinfectable || w is AutoDisinfectable
+                    || w is Toggleable || w is Breakable || w.GetType().Name == "StorageTileSwitchItemWorkable")
                 {
                     sources.Add($"skip:{w.GetType().Name}");
                     continue;
