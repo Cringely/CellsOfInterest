@@ -8,20 +8,23 @@ namespace CellsOfInterest
 {
     public enum CoiClass { Work, Output }
 
+    public enum CoiPhase { None, Gas, Liquid, Solid }
+
     public struct CoiEntry
     {
         public CoiClass Cls;
+        public CoiPhase Phase;      // outputs: Gas/Liquid/Solid; work: None
         public bool Deterministic;  // solid tint vs low-alpha candidate
         public bool Rotates;        // explicit work offsets only (spec: rotation rules)
         public bool IsWorldOffset;  // float world-space offset (outputs) vs integer CellOffset
         public CellOffset Cell;
         public Vector2 World;
 
-        public static CoiEntry AtCell(CoiClass cls, CellOffset cell, bool deterministic, bool rotates)
-            => new CoiEntry { Cls = cls, Cell = cell, Deterministic = deterministic, Rotates = rotates };
+        public static CoiEntry AtCell(CoiClass cls, CellOffset cell, bool deterministic, bool rotates, CoiPhase phase = CoiPhase.None)
+            => new CoiEntry { Cls = cls, Cell = cell, Deterministic = deterministic, Rotates = rotates, Phase = phase };
 
-        public static CoiEntry AtWorld(CoiClass cls, Vector2 world)
-            => new CoiEntry { Cls = cls, World = world, IsWorldOffset = true, Deterministic = true };
+        public static CoiEntry AtWorld(CoiClass cls, Vector2 world, CoiPhase phase = CoiPhase.None)
+            => new CoiEntry { Cls = cls, World = world, IsWorldOffset = true, Deterministic = true, Phase = phase };
     }
 
     public sealed class CoiData
@@ -152,24 +155,37 @@ namespace CellsOfInterest
             if (gen != null && gen.formula.outputs != null)
                 foreach (var o in gen.formula.outputs)
                     if (!o.store)
-                        entries.Add(CoiEntry.AtCell(CoiClass.Output, o.emitOffset, deterministic: true, rotates: false));
+                        entries.Add(CoiEntry.AtCell(CoiClass.Output, o.emitOffset, deterministic: true, rotates: false, PhaseOf(o.element)));
 
             var fab = go.GetComponent<ComplexFabricator>();
             if (fab != null && !fab.storeProduced)
-                entries.Add(CoiEntry.AtWorld(CoiClass.Output, new Vector2(fab.outputOffset.x, fab.outputOffset.y)));
+                entries.Add(CoiEntry.AtWorld(CoiClass.Output, new Vector2(fab.outputOffset.x, fab.outputOffset.y), CoiPhase.Solid));
 
             var conv = go.GetComponent<ElementConverter>();
             if (conv != null && conv.outputElements != null)
                 foreach (var oe in conv.outputElements)
-                    entries.Add(CoiEntry.AtWorld(CoiClass.Output, oe.outputElementOffset));
+                    if (!oe.storeOutput) // stored output is piped out a utility port, not emitted at this cell
+                        entries.Add(CoiEntry.AtWorld(CoiClass.Output, oe.outputElementOffset, PhaseOf(oe.elementHash)));
 
             var emitter = go.GetComponent<BuildingElementEmitter>();
             if (emitter != null)
-                entries.Add(CoiEntry.AtWorld(CoiClass.Output, emitter.modifierOffset));
+                entries.Add(CoiEntry.AtWorld(CoiClass.Output, emitter.modifierOffset, PhaseOf(emitter.element)));
 
             var storage = go.GetComponent<Storage>();
             if (storage != null && storage.dropOffset != Vector2.zero)
-                entries.Add(CoiEntry.AtWorld(CoiClass.Output, storage.dropOffset));
+                entries.Add(CoiEntry.AtWorld(CoiClass.Output, storage.dropOffset, CoiPhase.Solid));
+        }
+
+        // Element phase for an output. Null-guarded: FindElementByHash returns null for an
+        // unregistered/modded hash, and an NRE here would be swallowed by Build's try/catch and
+        // blank EVERY tint for the building (work cells included), not just this one output.
+        private static CoiPhase PhaseOf(SimHashes hash)
+        {
+            Element e = ElementLoader.FindElementByHash(hash);
+            if (e == null) return CoiPhase.Solid;
+            if (e.IsLiquid) return CoiPhase.Liquid;
+            if (e.IsGas) return CoiPhase.Gas;
+            return CoiPhase.Solid;
         }
 
         private static bool TryExplicitOffset(Workable w, out CellOffset cell)
