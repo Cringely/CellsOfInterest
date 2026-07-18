@@ -44,6 +44,10 @@ MSBuild.exe "CellsOfInterest.csproj" -t:Rebuild -p:Configuration=Debug
 
 The `.csproj` references the game's assemblies by absolute `HintPath` into your `OxygenNotIncluded_Data/Managed/` folder. On a new machine, repoint those paths to that machine's Managed folder before building.
 
+## Credits
+
+Made in response to [a request on r/Oxygennotincluded](https://www.reddit.com/r/Oxygennotincluded/comments/1uxlji1/tiles_of_interest_mod/). Someone asked if it could be made, so here it is. Thanks for the idea.
+
 ## License
 
 MIT. See [LICENSE](LICENSE).
