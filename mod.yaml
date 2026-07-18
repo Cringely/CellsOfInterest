@@ -1,3 +1,3 @@
 title: "Cells of Interest"
-description: "Shows a building's work, delivery, and output cells while you place it."
+description: "Shows a building's work and output cells while you place it, with outputs colored by gas, liquid, or solid."
 staticID: CellsOfInterest
