@@ -39,4 +39,4 @@ The code for this mod was written with significant AI help (Claude, an AI coding
 On GitHub: [url=https://github.com/Cringely/CellsOfInterest]github.com/Cringely/CellsOfInterest[/url]
 
 [h1]Thanks[/h1]
-Thanks to [url=https://www.reddit.com/user/Jaaaameslol/]u/Jaaaameslol[/url], who asked for this mod on r/Oxygennotincluded ([url=https://www.reddit.com/r/Oxygennotincluded/comments/1uxlji1/tiles_of_interest_mod/]the original request[/url]). You asked if it could be made, so here it is.
+Thanks to u/Jaaaameslol, who asked on r/Oxygennotincluded for a mod that shows a building's tiles of interest, like the wiki's Metal Refinery picture ([url=https://www.reddit.com/r/Oxygennotincluded/comments/1uxlji1/tiles_of_interest_mod/]the original post[/url]). Here it is.
