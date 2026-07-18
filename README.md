@@ -46,7 +46,7 @@ The `.csproj` references the game's assemblies by absolute `HintPath` into your 
 
 ## Credits
 
-Made in response to [a request on r/Oxygennotincluded](https://www.reddit.com/r/Oxygennotincluded/comments/1uxlji1/tiles_of_interest_mod/). Someone asked if it could be made, so here it is. Thanks for the idea.
+Idea by [u/Jaaaameslol](https://www.reddit.com/user/Jaaaameslol/), who [asked for it on r/Oxygennotincluded](https://www.reddit.com/r/Oxygennotincluded/comments/1uxlji1/tiles_of_interest_mod/). They asked if it could be made, so here it is. Thanks for the idea.
 
 ## License
 
