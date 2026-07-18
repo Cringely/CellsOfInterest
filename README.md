@@ -46,7 +46,7 @@ The `.csproj` references the game's assemblies by absolute `HintPath` into your 
 
 ## Credits
 
-Idea by [u/Jaaaameslol](https://www.reddit.com/user/Jaaaameslol/), who [asked on r/Oxygennotincluded](https://www.reddit.com/r/Oxygennotincluded/comments/1uxlji1/tiles_of_interest_mod/) for a mod that shows a building's tiles of interest, like the wiki's Metal Refinery diagram. Here it is.
+Idea by [u/Jaaaameslol](https://www.reddit.com/user/Jaaaameslol/), who [asked on r/Oxygennotincluded](https://www.reddit.com/r/Oxygennotincluded/comments/1uxlji1/tiles_of_interest_mod/) for a mod that shows a building's tiles of interest. Here it is.
 
 ## License
 
