@@ -33,14 +33,22 @@ namespace CellsOfInterest
         // second rather than once at Show() only.
         private const float RepositionIntervalSeconds = 0.25f;
 
-        private static readonly (Color color, string label)[] Rows =
+        // A row names the class it explains rather than carrying a literal color, so its swatch
+        // resolves through the same CoiPalette.For call the tint quads use and cannot describe a
+        // color nothing on screen is drawn in.
+        private static readonly (CoiClass cls, CoiPhase phase, string label)[] Rows =
         {
-            (CoiPalette.Work,   "Dupe works here"),
-            (CoiPalette.Liquid, "Liquid output"),
-            (CoiPalette.Gas,    "Gas output"),
-            (CoiPalette.Solid,  "Solid / item drop"),
+            (CoiClass.Work,   CoiPhase.None,   "Dupe works here"),
+            (CoiClass.Output, CoiPhase.Liquid, "Liquid output"),
+            (CoiClass.Output, CoiPhase.Gas,    "Gas output"),
+            (CoiClass.Output, CoiPhase.Solid,  "Solid / item drop"),
         };
 
+        // Built once per colony and never recolored. The only in-game writer of config.json is
+        // PLib's options dialog, which hangs off ModsScreen, and MainMenu.Mods() is that screen's
+        // only instantiation site in Assembly-CSharp; reaching it tears down the game scene and
+        // GameScreenManager's canvas, so Show finds panel == null and rebuilds the swatches from
+        // the new palette. An edit made outside the game mid-colony is stale until the next load.
         private static GameObject panel;
         private static int refs;
 
@@ -101,7 +109,7 @@ namespace CellsOfInterest
                 var swatchGo = new GameObject("Swatch");
                 swatchGo.transform.SetParent(panel.transform, worldPositionStays: false);
                 var swatchImg = swatchGo.AddComponent<Image>();
-                swatchImg.color = Rows[i].color;
+                swatchImg.color = CoiPalette.For(Rows[i].cls, Rows[i].phase);
                 swatchImg.raycastTarget = false;
                 var swatchRt = swatchGo.GetComponent<RectTransform>();
                 swatchRt.anchorMin = new Vector2(0f, 1f);

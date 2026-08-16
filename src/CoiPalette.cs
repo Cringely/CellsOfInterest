@@ -4,26 +4,28 @@ namespace CellsOfInterest
 {
     // Single source of truth for tint colors, shared by CoiTintController (the quads) and
     // CoiLegend (the swatches) so a legend swatch can never drift from the tint it explains.
-    // Colors are intentionally editable; retune after seeing them in-game.
+    // The colors themselves live in CoiPaletteDefs; this resolves the player's choice.
     internal static class CoiPalette
     {
         public const float AlphaSolid = 0.55f;
         public const float AlphaCandidate = 0.25f;
 
-        public static readonly Color Work   = new Color(0.20f, 0.85f, 0.25f);
-        public static readonly Color Liquid = new Color(0.25f, 0.65f, 0.95f);
-        public static readonly Color Gas    = new Color(0.95f, 0.60f, 0.15f);
-        public static readonly Color Solid  = new Color(0.70f, 0.35f, 0.90f);
-
         // Opaque color for an entry; the caller sets alpha by deterministic vs candidate.
+        //
+        // The def is looked up per call rather than held in a field or behind a named property:
+        // CoiConfig.Reload replaces CoiConfig.Active wholesale on each build-tool activation, so a
+        // def captured in a static initializer would serve whichever palette was selected when
+        // this class was first touched and never change again. Get is a switch over four readonly
+        // fields, and For is its only caller.
         public static Color For(CoiClass cls, CoiPhase phase)
         {
-            if (cls == CoiClass.Work) return Work;
+            CoiPaletteDef palette = CoiPaletteDefs.Get(CoiConfig.Active.Palette);
+            if (cls == CoiClass.Work) return palette.Work;
             switch (phase)
             {
-                case CoiPhase.Liquid: return Liquid;
-                case CoiPhase.Gas: return Gas;
-                default: return Solid;
+                case CoiPhase.Liquid: return palette.Liquid;
+                case CoiPhase.Gas: return palette.Gas;
+                default: return palette.Solid;
             }
         }
     }

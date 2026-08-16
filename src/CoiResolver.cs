@@ -23,7 +23,9 @@ namespace CellsOfInterest
         public static CoiEntry AtCell(CoiClass cls, CellOffset cell, bool deterministic, bool rotates, CoiPhase phase = CoiPhase.None)
             => new CoiEntry { Cls = cls, Cell = cell, Deterministic = deterministic, Rotates = rotates, Phase = phase };
 
-        public static CoiEntry AtWorld(CoiClass cls, Vector2 world, CoiPhase phase = CoiPhase.None)
+        // No default for phase: every caller is an Output, and CoiPalette.For folds CoiPhase.None
+        // into its Solid arm, so an omitted phase would silently paint an output the wrong color.
+        public static CoiEntry AtWorld(CoiClass cls, Vector2 world, CoiPhase phase)
             => new CoiEntry { Cls = cls, World = world, IsWorldOffset = true, Deterministic = true, Phase = phase };
     }
 
