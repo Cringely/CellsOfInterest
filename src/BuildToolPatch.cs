@@ -12,6 +12,11 @@ namespace CellsOfInterest
     {
         public static void Postfix(BuildTool __instance)
         {
+            // Re-read config.json here so a change saved from the Mods menu applies on the next
+            // building selection instead of waiting for a colony reload. Runs before the
+            // controller is attached, so its first Redraw already sees the new values.
+            CoiConfig.Reload();
+
             // `visualizer` is a public field declared on InterfaceTool (BuildTool -> DragTool ->
             // InterfaceTool; decompile confirms `public GameObject visualizer;`), so no
             // Traverse reflection is needed here.
