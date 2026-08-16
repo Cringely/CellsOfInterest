@@ -42,6 +42,14 @@ namespace CellsOfInterest
         private static readonly Dictionary<BuildingDef, CoiData> cache
             = new Dictionary<BuildingDef, CoiData>();
 
+        // The CoiConfig.Version `cache` was built against. A per-class toggle changes which entries
+        // a def produces, and it changes them for every def visited this session, not just the one
+        // on screen, so the whole dictionary goes. Two simpler things were rejected: dropping the
+        // cache outright, which puts TryExplicitOffset's reflection on every building selection;
+        // and keying the cache by (def, version), which is a smaller blast radius but never
+        // reclaims the entries built under a toggle setting the player has already left.
+        private static int cacheVersion;
+
         // Explicit work-offset field names seen in configs (Bottler.workCellOffset etc.).
         private static readonly string[] ExplicitOffsetFields = { "workCellOffset", "workOffset" };
 
@@ -49,6 +57,14 @@ namespace CellsOfInterest
         {
             if (def == null)
                 return CoiData.Empty;
+            // Flush before the lookup, never after: an entry built under the old toggles must not
+            // be served on the way to noticing they changed. `!=` rather than `<` so this needs no
+            // assumption that Version only ever increments.
+            if (cacheVersion != CoiConfig.Version)
+            {
+                cache.Clear();
+                cacheVersion = CoiConfig.Version;
+            }
             if (cache.TryGetValue(def, out var data))
                 return data;
             try
@@ -74,8 +90,33 @@ namespace CellsOfInterest
 
             AddWork(go, entries);
             AddOutputs(go, entries);
+            entries.RemoveAll(e => !Enabled(e));
 
             return entries.Count == 0 ? CoiData.Empty : new CoiData { Entries = entries.ToArray() };
+        }
+
+        // Per-class gating. One pass over the finished list rather than a check at each of the
+        // eight emit sites: the sites that need the phase compute it inline inside an `if`, so
+        // gating there would mean hoisting PhaseOf into a local at three of them, and a ninth emit
+        // site added later could silently skip the gate. Cached with the entries, so this is read
+        // at build time only and the cache-version flush above is what makes a toggle change land.
+        private static bool Enabled(CoiEntry e)
+        {
+            CoiSettings s = CoiConfig.Active;
+            if (e.Cls == CoiClass.Work)
+                return s.TintWork;
+            switch (e.Phase)
+            {
+                case CoiPhase.Gas: return s.TintGas;
+                case CoiPhase.Liquid: return s.TintLiquid;
+                // Solid, None, and anything outside the enum. Same fold as CoiPalette.For, which
+                // has no None arm either: the toggle that hides a cell is named after the color the
+                // cell is drawn in, so "Solid outputs: off" cannot leave a purple cell on screen.
+                // Step 7 caution: spec section 8 gives heat entries CoiPhase.None, so CoiClass.Heat
+                // needs its own arm on e.Cls above or it silently gates on TintSolid (default true)
+                // instead of TintHeat (default false), with no compile error.
+                default: return s.TintSolid;
+            }
         }
 
         private static void AddWork(GameObject go, List<CoiEntry> entries)

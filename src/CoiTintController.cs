@@ -82,7 +82,9 @@ namespace CellsOfInterest
                     var quad = GetQuad(used++);
                     quad.transform.SetPosition(Grid.CellToPosCCC(cell, Grid.SceneLayer.FXFront2));
                     Color c = CoiPalette.For(e.Cls, e.Phase);
-                    c.a = e.Deterministic ? CoiPalette.AlphaSolid : CoiPalette.AlphaCandidate;
+                    // Not hoisted above the loop: the ternary reads one property either way, so
+                    // there is nothing to hoist.
+                    c.a = e.Deterministic ? CoiConfig.Active.AlphaSolid : CoiConfig.Active.AlphaCandidate;
                     quad.color = c;
                     quad.gameObject.SetActive(true);
                 }

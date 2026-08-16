@@ -7,10 +7,10 @@ namespace CellsOfInterest
     // The colors themselves live in CoiPaletteDefs; this resolves the player's choice.
     internal static class CoiPalette
     {
-        public const float AlphaSolid = 0.55f;
-        public const float AlphaCandidate = 0.25f;
-
-        // Opaque color for an entry; the caller sets alpha by deterministic vs candidate.
+        // Opaque color for an entry; the caller sets alpha by deterministic vs candidate, now from
+        // CoiConfig.Active.AlphaSolid / AlphaCandidate (the sliders default to the 0.55 / 0.25 this
+        // class used to hold as constants). CoiLegend's swatches take the returned Color unchanged,
+        // so they stay fully opaque: UnityEngine.Color's (r, g, b) constructor sets a = 1.
         //
         // The def is looked up per call rather than held in a field or behind a named property:
         // CoiConfig.Reload replaces CoiConfig.Active wholesale on each build-tool activation, so a
