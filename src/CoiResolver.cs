@@ -105,6 +105,9 @@ namespace CellsOfInterest
                 //  - Door: Door : Workable, toggle errand is incidental to placement planning
                 //    (user-directed exclusion: door open/close/lock UI should not tint cells).
                 //  - Toggleable: enable/disable errand on doors, reservoirs, dispensers.
+                //  - Valve: the adjust-flow errand on Gas/Liquid Valve (Valve : Workable). The valve's
+                //    dupe-set-flow cell is not a placement cell of interest; without this it falls to the
+                //    unknown-subclass fallback and gets a candidate pivot tint (live-confirmed 2026-07-21).
                 //  - Breakable: damage interaction errand.
                 //  - StorageTileSwitchItemWorkable: storage tile item switch errand.
                 //  - DropAllWorkable: the "empty the building's storage" errand, per-config on any
@@ -122,7 +125,8 @@ namespace CellsOfInterest
                 // rely on for automation-sensor placement.
                 if (w is Deconstructable || w is Repairable || w is BuildingHP || w is Door
                     || w is Disinfectable || w is AutoDisinfectable || w is DropAllWorkable
-                    || w is Toggleable || w is Breakable || w.GetType().Name == "StorageTileSwitchItemWorkable")
+                    || w is Toggleable || w is Valve || w is Breakable
+                    || w.GetType().Name == "StorageTileSwitchItemWorkable")
                 {
                     continue;
                 }
