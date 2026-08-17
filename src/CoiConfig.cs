@@ -47,10 +47,10 @@ namespace CellsOfInterest
         // list it belongs to is a visible omission rather than a silent default.
         //
         // anyChanged replaces Active. entrySetChanged additionally bumps Version, and only the
-        // six toggles below qualify: they decide which entries a BuildingDef produces. Palette,
-        // the alphas, and the shared-cell settings are read at render time and leave the entry
-        // set intact, so they must not bump Version. Comparing whole objects instead would flush
-        // every cached BuildingDef on a single alpha-slider tick.
+        // six toggles below qualify: they decide which entries a BuildingDef produces. Palette and
+        // the alphas are read at render time and leave the entry set intact, so they must not bump
+        // Version. Comparing whole objects instead would flush every cached BuildingDef on a single
+        // alpha-slider tick. Shared-cell striping needs no entry here at all: it carries no setting.
         //
         // Floats compare exactly on purpose. These values round-trip through one JSON file, so
         // any difference at all is a real edit, and an epsilon would only hide small ones.
@@ -66,8 +66,6 @@ namespace CellsOfInterest
 
             anyChanged = entrySetChanged ||
                 a.Palette != b.Palette ||
-                a.SharedCells != b.SharedCells ||
-                a.RotateInterval != b.RotateInterval ||
                 a.AlphaSolid != b.AlphaSolid ||
                 a.AlphaCandidate != b.AlphaCandidate ||
                 a.ConfigFileFormat != b.ConfigFileFormat;

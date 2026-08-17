@@ -2,9 +2,9 @@ using PeterHan.PLib.Options;
 
 namespace CellsOfInterest
 {
-    // Both enums below persist to config.json as INTEGERS, not names: the game ships
-    // Newtonsoft.Json 7.0.1, neither enum carries a [JsonConverter], and Newtonsoft's default for
-    // an enum is its ordinal. So member order is the on-disk wire format once v2 is released.
+    // The enum below persists to config.json as an INTEGER, not a name: the game ships
+    // Newtonsoft.Json 7.0.1, it carries no [JsonConverter], and Newtonsoft's default for an enum is
+    // its ordinal. So member order is the on-disk wire format once v2 is released.
     // Append new members at the end, never insert or reorder — inserting silently shifts every
     // existing player's saved value by one, with no error and no migration.
 
@@ -18,18 +18,6 @@ namespace CellsOfInterest
         Tritanopia
     }
 
-    // How a cell carrying more than one entry is drawn. Priority draws only the highest-priority
-    // class and never moves; Rotate steps through the classes on a timer.
-    //
-    // Priority is first so the zero value matches the shipping default. A settings file that is
-    // truncated, hand-edited to garbage, or written by a future version that drops a member
-    // deserializes to 0, and that has to land on the conservative mode rather than on motion.
-    public enum SharedCellMode
-    {
-        Priority,
-        Rotate
-    }
-
     // Mod options, surfaced by PLib POptions in the Mods menu and persisted to config.json.
     //
     // PLib reads and writes options through PropertyInfo (OptionsHandlers.FindOptionClass and
@@ -38,10 +26,11 @@ namespace CellsOfInterest
     // dialog by reflecting this type from PLib's own assembly.
     //
     // Every default below reproduces v1 behavior, so a player who updates and restarts without
-    // opening this screen sees what v1 showed. The one disclosed exception is SharedCells:
-    // v1 blended stacked quads into mud, which is the defect the shared-cell modes exist to
-    // remove, so Priority is the closest static equivalent. Changing any default here changes
-    // what an existing player sees on upgrade; it is not a free edit.
+    // opening this screen sees what v1 showed. The one disclosed exception carries no setting at
+    // all: v1 blended stacked quads into mud, and spec §9 replaces that with one vertical stripe
+    // per class, unconditionally. Striping is static and deterministic, so it introduces no motion
+    // on upgrade and touches only the cells that already rendered as mud. Changing any default
+    // here changes what an existing player sees on upgrade; it is not a free edit.
     public sealed class CoiSettings
     {
         // Format version of the persisted file, carried so a later release can migrate a config
@@ -70,15 +59,10 @@ namespace CellsOfInterest
         [Option("Heat exchange", "Tint the cells a building exchanges heat with the world over.", "Tint classes")]
         public bool TintHeat { get; set; } = false;
 
-        [Option("Shared cells", "How a cell carrying more than one class is drawn: rotating through the colors, or showing only the highest-priority one.", "Shared cells")]
-        public SharedCellMode SharedCells { get; set; } = SharedCellMode.Priority;
-
-        // Floor is a flash-rate limit, not a taste call: three classes at 0.40s is 2.5
-        // transitions per second, under the 3-per-second general flash threshold in WCAG 2.1.
-        // Keep the lower bound if this is ever retuned.
-        [Option("Rotation interval", "Seconds each color holds before the next one. Only used when shared cells rotate.", "Shared cells", Format = "F2")]
-        [Limit(0.40, 2.00)]
-        public float RotateInterval { get; set; } = 0.70f;
+        // No shared-cell setting exists on purpose. Striping is unconditional (spec §9): it is
+        // static, deterministic, needs no Update, and shows every class present, so neither of the
+        // modes an earlier draft specified had anything left to offer. Do not reintroduce one
+        // without re-reading §9 - a mode enum here is also a wire-format member, per the note above.
 
         [Option("Confirmed cell opacity", "Opacity of cells the mod resolved exactly.", "Opacity", Format = "F2")]
         [Limit(0.10, 0.90)]
