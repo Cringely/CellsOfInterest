@@ -46,6 +46,14 @@ namespace CellsOfInterest
         //   `Grid.CellToPosCCC(Grid.PosToCell(this), Ore) + outputOffset`, and Storage.Store puts a
         //   stored item at `Grid.CellToPosCCC(Grid.PosToCell(this), Move)` before MakeWorldActive
         //   Translates it by dropOffset, so both are measured from the centre.
+        //
+        // Do not "simplify" this into a single shared origin. The tempting reading is that the
+        // transform arms only ever see whole-number offsets and so cannot tell the two apart, and
+        // that is false: ElementConverter.OutputElement's constructor defaults outputElementOffsety
+        // to 0.5f, not to zero, so every output built from the short overload carries a fractional y
+        // without a single call site that looks like it does. Ethanol Distiller's CO2 is one of
+        // those, and Oil Well Cap is explicitly (2, 1.5). Both would move up a row on a shared
+        // cell-centre origin, in exchange for the two this flag fixed.
         public static CoiEntry AtWorld(CoiClass cls, Vector2 world, CoiPhase phase, bool fromCellCenter = false)
             => new CoiEntry { Cls = cls, World = world, IsWorldOffset = true, Deterministic = true, Phase = phase, FromCellCenter = fromCellCenter };
     }
