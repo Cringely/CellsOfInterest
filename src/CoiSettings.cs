@@ -26,11 +26,21 @@ namespace CellsOfInterest
     // dialog by reflecting this type from PLib's own assembly.
     //
     // Every default below reproduces v1 behavior, so a player who updates and restarts without
-    // opening this screen sees what v1 showed. The one disclosed exception carries no setting at
-    // all: v1 blended stacked quads into mud, and spec §9 replaces that with one vertical stripe
-    // per class, unconditionally. Striping is static and deterministic, so it introduces no motion
-    // on upgrade and touches only the cells that already rendered as mud. Changing any default
-    // here changes what an existing player sees on upgrade; it is not a free edit.
+    // opening this screen sees what v1 showed. Two disclosed exceptions carry no setting at all,
+    // both ruled unconditional by the operator on 2026-08-17 as defect fixes rather than
+    // preferences:
+    //
+    //   Striping. v1 blended stacked quads into a colour matching no legend swatch, and spec §9
+    //   replaces that with one vertical stripe per class. Static and deterministic, so it adds no
+    //   motion on upgrade, and it touches only the cells that already rendered as mud - measured
+    //   as exactly one tile on Rock Crusher in the §11 upgrade run.
+    //
+    //   Present-only legend rows. v1 drew all four rows always, so the legend claimed every
+    //   building emits every class. CoiLegend now publishes a mask of the classes actually
+    //   resolved for the selected building.
+    //
+    // Changing any default here changes what an existing player sees on upgrade; it is not a free
+    // edit.
     public sealed class CoiSettings
     {
         // Format version of the persisted file, carried so a later release can migrate a config
