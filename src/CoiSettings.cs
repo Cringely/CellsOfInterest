@@ -56,7 +56,11 @@ namespace CellsOfInterest
         [Option("Piped outputs", "Tint the conduit output port of outputs that leave through a pipe instead of into the room.", "Tint classes")]
         public bool TintPipedOutputs { get; set; } = false;
 
-        [Option("Heat exchange", "Tint the cells a building exchanges heat with the world over.", "Tint classes")]
+        // Wording matters here, because this toggle does nothing on almost every building and that
+        // has to read as intended rather than broken. Only five stock buildings have a heat reach
+        // that differs from their footprint (see CoiResolver.AddHeat); for the rest the footprint is
+        // the answer and the placement ghost already draws it.
+        [Option("Heat exchange", "Tint the heat-exchange cells of the buildings whose thermal reach is not their footprint: Tempshift Plate, Ice-E Fan, Steam Turbine, Conduction Panel. Other buildings show nothing, because their reach is exactly the footprint you are already placing.", "Tint classes")]
         public bool TintHeat { get; set; } = false;
 
         // No shared-cell setting exists on purpose. Striping is unconditional (spec §9): it is

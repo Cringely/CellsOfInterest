@@ -303,8 +303,8 @@ namespace CellsOfInterest
         // sites in three shapes, all four listed here. Keyed on PrefabID rather than reflecting each
         // config's private `overrideOffsets` array, which no compile error would protect; the cost
         // is that a game update adding a fifth override passes unnoticed, so re-run that sweep when
-        // the game updates. A building missing from this table falls back to its bounding box, which
-        // is what the game does for every building that does not override.
+        // the game updates. A building missing from this table draws NOTHING - see AddHeat for why
+        // that is the whole point rather than a gap.
         private static readonly Dictionary<string, (int xMin, int xMax, int yMin, int yMax)> ExtentsOverrides
             = new Dictionary<string, (int, int, int, int)>
         {
@@ -322,9 +322,9 @@ namespace CellsOfInterest
             { "SteamTurbine2",  ( 0, 0, -1, 0) },
         };
 
-        // Thermal contact cells (spec §8): which cells this building actually touches the heat sim
-        // over. Deliberately NOT the placement footprint - the placement ghost already draws that,
-        // and the buildings a player most needs this for are exactly the ones where the two differ.
+        // Thermal contact cells (spec §8), for the five buildings whose heat reach is not their
+        // footprint. Every other building emits nothing, which is the point of the class rather than
+        // a gap in it - the reasoning is at the early return below.
         //
         // This does not consult AddWork's Workable exclusion list, and the divergence is deliberate.
         // That list asks whether a Workable is the building's primary operation; this asks whether
@@ -364,14 +364,30 @@ namespace CellsOfInterest
                 return;
             }
 
-            if (!def.UseStructureTemperature)
-                return;
-
             // Everything else registers an Extents RECTANGLE, never a cell set: Building.RefreshCells
             // builds it as the bounding box of the rotated PlacementOffsets and hands it to
-            // SimMessages.AddBuildingHeatExchange. So a non-rectangular footprint conducts over its
-            // bounding box, a superset of its placement cells, and drawing PlacementOffsets here
-            // would under-report exactly those buildings.
+            // SimMessages.AddBuildingHeatExchange.
+            //
+            // And a building not in the override table draws NOTHING, which is the single decision
+            // that makes this class worth shipping. BuildingDef.GenerateOffsets is the only
+            // assignment to PlacementOffsets anywhere in the game assembly and it always writes a
+            // full width x height rectangle, so for every other building that bounding box IS the
+            // footprint, cell for cell, with no exception. Drawing it repaints the placement ghost
+            // in red and tells the player something already on screen. Across 450 IBuildingConfig
+            // classes exactly four override their extents; an earlier draft drew every building, so
+            // it was noise on 445 of them to be useful on five.
+            //
+            // It also drops a class of confidently wrong answers. A modded building with its own
+            // OverrideExtents is not in this table, and painting its footprint would have asserted a
+            // reach the game does not use. Emitting nothing asserts nothing, which is correct.
+            //
+            // The 29 stock configs that set UseStructureTemperature = false are tiles and rocket
+            // ports, already excluded above as SimCellOccupier, so nothing was learned from their
+            // absence either. The check stays anyway: it costs one comparison and it holds if a mod
+            // ever re-registers one of the four IDs below with structure temperature turned off.
+            if (!ExtentsOverrides.TryGetValue(def.PrefabID, out var d) || !def.UseStructureTemperature)
+                return;
+
             int xMin = int.MaxValue, xMax = int.MinValue, yMin = int.MaxValue, yMax = int.MinValue;
             foreach (CellOffset off in def.PlacementOffsets)
             {
@@ -380,14 +396,10 @@ namespace CellsOfInterest
                 if (off.y < yMin) yMin = off.y;
                 if (off.y > yMax) yMax = off.y;
             }
-
-            if (ExtentsOverrides.TryGetValue(def.PrefabID, out var d))
-            {
-                xMin += d.xMin;
-                xMax += d.xMax;
-                yMin += d.yMin;
-                yMax += d.yMax;
-            }
+            xMin += d.xMin;
+            xMax += d.xMax;
+            yMin += d.yMin;
+            yMax += d.yMax;
 
             // Deterministic: false, so contact cells draw at candidate alpha. They cover more screen
             // area than every other class put together and must not shout over the work cell. That
