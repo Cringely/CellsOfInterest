@@ -89,8 +89,27 @@ namespace CellsOfInterest
 
                     if (!Grid.IsValidCell(cell))
                         continue; // map edge / rocket interior boundary: skip, don't guess
-                    if (!e.Deterministic && Grid.Solid[cell])
-                        continue; // candidate stand cell currently blocked: drop
+                    // Candidate cell currently blocked: drop. The premise is occupancy - a duplicant
+                    // standing here, or §8's future heat wash exchanging here - so it never applied
+                    // to an Output, which says where material GOES and not that anything has to
+                    // stand there. Every Output entry already skipped this cull before step 5 (all
+                    // of them were Deterministic), so naming the class changes no existing entry: it
+                    // makes that exemption explicit and extends it to the piped port entry, which is
+                    // candidate alpha (spec §7) but fixed building geometry. The extension matters
+                    // because a port cell IS routinely solid during a perfectly valid placement.
+                    // Nothing in the placement path rejects a footprint sitting in un-dug rock:
+                    // BuildingDef.IsAreaClear:547 reads object layers, world index and Unobtanium;
+                    // AreConduitPortsInValidPositions:1423 delegates to IsValidConduitConnection:1621,
+                    // which tests port-layer overlap and nothing else; the one Grid.Solid test,
+                    // CheckBaseFoundation:1690, demands solid ground in the row BELOW the footprint
+                    // rather than empty space inside it; and Constructable.PlaceDiggables:657 just
+                    // queues the digs. So culling here would hide the port exactly while the player
+                    // is planning where the pipe run has to reach. Rejected: a per-entry
+                    // IgnoreSolidCull flag on CoiEntry - a struct field plus an AtCell parameter
+                    // that exactly one call site would ever set, and CoiClass.Heat is not an Output,
+                    // so step 7 inherits the cull spec §8 asks for under either form.
+                    if (!e.Deterministic && e.Cls != CoiClass.Output && Grid.Solid[cell])
+                        continue;
 
                     var quad = GetQuad(used++);
                     quad.transform.SetPosition(Grid.CellToPosCCC(cell, Grid.SceneLayer.FXFront2));

@@ -89,7 +89,7 @@ namespace CellsOfInterest
             var entries = new List<CoiEntry>();
 
             AddWork(go, entries);
-            AddOutputs(go, entries);
+            AddOutputs(def, go, entries);
             entries.RemoveAll(e => !Enabled(e));
 
             return entries.Count == 0 ? CoiData.Empty : new CoiData { Entries = entries.ToArray() };
@@ -194,10 +194,13 @@ namespace CellsOfInterest
             }
         }
 
-        private static void AddOutputs(GameObject go, List<CoiEntry> entries)
+        private static void AddOutputs(BuildingDef def, GameObject go, List<CoiEntry> entries)
         {
-            // All output offsets are UNROTATED by the game at their emission sites
-            // (EnergyGenerator.cs:370, ElementConverter.cs:558, ComplexFabricator.cs:1224).
+            // All ROOM-EMISSION output offsets below are UNROTATED by the game at their emission
+            // sites (EnergyGenerator.cs:370, ElementConverter.cs:558, ComplexFabricator.cs:1224).
+            // The piped-port branch at the end of this method is the one exception: a conduit port
+            // is not an emission site, it IS rotated (BuildingDef.cs:855, Building.cs:297-301), and
+            // its entry is built with rotates: true. See that branch's own comment.
             var gen = go.GetComponent<EnergyGenerator>();
             if (gen != null && gen.formula.outputs != null)
                 foreach (var o in gen.formula.outputs)
@@ -221,6 +224,65 @@ namespace CellsOfInterest
             var storage = go.GetComponent<Storage>();
             if (storage != null && storage.dropOffset != Vector2.zero)
                 entries.Add(CoiEntry.AtWorld(CoiClass.Output, storage.dropOffset, CoiPhase.Solid));
+
+            // Piped outputs (step 5, spec §7). `store`/`storeProduced`/`storeOutput` above all mean
+            // "goes into this building's own Storage" (EnergyGenerator.cs:354-368,
+            // ElementConverter.cs:532-555, ComplexFabricator.cs:1253/1279/1288), NOT "leaves through
+            // a pipe" - most stored outputs are dupe-fetched or ElementDropper-dropped and never
+            // touch a conduit (Fertilizer Synthesizer, Compost, Rust Deoxidizer all store with no
+            // OutputConduitType at all). So a real port has to exist first; only then does a stored
+            // output mean anything. Color and cell both come from the port, never from the element.
+            //
+            // The gen and conv arms filter on phase because that is the test the game applies at
+            // runtime (ConduitDispenser.FindSuitableElement, ConduitDispenser.cs:167-186: a Liquid
+            // port only ever ships an IsLiquid element, a Gas port only IsGas). The filter decides
+            // only WHETHER an entry exists, never what color it is. No stock building fails it -
+            // every vanilla port-plus-stored-output building has at least one phase-matching stored
+            // output - so it earns its place as a guard against a modded building whose only stored
+            // output cannot use its own port and would otherwise advertise a route that never
+            // carries anything. Rejected: dropping it, free on stock content and one silent wrong
+            // tint on the first mod that trips it.
+            //
+            // The fab arm deliberately has NO store test, because `storeProduced` is not the game's
+            // stored predicate: ComplexFabricator.cs:1253/1279/1288 all read
+            // `storeProduced || recipeElement.storeElement`, and four stock buildings pipe a liquid
+            // out with `storeProduced == false` sitting on the prefab. Chemical Refinery and Milk
+            // Press set it true then clear it (ChemicalRefineryConfig.cs:62/66,
+            // MilkPressConfig.cs:47/51) and mark every liquid result `storeElement: true`; Sludge
+            // Press never sets it and passes IsLiquid straight into the storeElement parameter
+            // (SludgePressConfig.cs:72); Metal Refinery pipes its heated coolant back out with no
+            // store flag anywhere (MetalRefineryConfig.cs:34-35, dispenser at :73-74). Gating on
+            // storeProduced drops all four. All seven vanilla ComplexFabricators carrying an output
+            // port - those four plus Glass Forge, Smoker, Uranium Centrifuge - genuinely ship
+            // material through it, so "is a fabricator, has a port" is the honest test. It also
+            // sidesteps the arm's real limit: products are per-recipe Tag-keyed materials with no
+            // SimHashes to PhaseOf() at def time, so this arm could not phase-filter even if it
+            // wanted to. Rejected: scanning ComplexRecipeManager for `storeElement` per result at
+            // def-build time - a whole recipe-table lookup to re-derive what the port already says.
+            //
+            // One primary port per building (OutputConduitType is a single enum), so every
+            // qualifying source resolves to the identical cell and phase - emit at most one entry,
+            // never one per qualifying output, or Polymerizer (Steam+CO2, both Gas, one port) and
+            // Smoker (a fabricator plus a storeOutput ElementConverter on the same gas port) stack
+            // two identical quads and double the alpha. That dedupe is within-branch only: a port
+            // cell already carrying an entry from another class still draws two quads. Two stock
+            // cases do - Desalinator, whose port is (0,0) and whose DesalinatorWorkableEmpty pivots
+            // there, and Metal Refinery, whose fabricator drop tint lands on the same cell as its
+            // (1,0) port. Cross-class collapse is step 6's job (spec §9) and step 5 ships first
+            // (spec §13), so those two cells read as a blend until then.
+            if (CoiConfig.Active.TintPipedOutputs
+                && CoiPortResolver.TryGetOutputPort(def, out CellOffset portOffset, out CoiPhase portPhase))
+            {
+                bool piped =
+                    fab != null
+                    || (gen != null && gen.formula.outputs != null
+                        && Array.Exists(gen.formula.outputs, o => o.store && PhaseOf(o.element) == portPhase))
+                    || (conv != null && conv.outputElements != null
+                        && Array.Exists(conv.outputElements, oe => oe.storeOutput && PhaseOf(oe.elementHash) == portPhase));
+
+                if (piped)
+                    entries.Add(CoiEntry.AtCell(CoiClass.Output, portOffset, deterministic: false, rotates: true, portPhase));
+            }
         }
 
         // Element phase for an output. Null-guarded: FindElementByHash returns null for an
