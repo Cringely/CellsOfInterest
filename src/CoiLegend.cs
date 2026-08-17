@@ -4,7 +4,8 @@ using UnityEngine.UI;
 
 namespace CellsOfInterest
 {
-    // Screen-space legend explaining CoiTintController's swatch colors. Visible exactly while a
+    // Screen-space legend explaining CoiTintController's swatch colors, pinned to a fixed top-right
+    // anchor so the player always finds it in the same place. Visible exactly while a
     // build-tool preview has live tints: CoiTintController.Start/OnDestroy call Show/Hide 1:1.
     // OnActivateTool double-fires (BuildToolPatch.cs) and re-selecting a building destroys the OLD
     // preview's controller AFTER the NEW one's Start already ran (BuildTool.cs), so Show/Hide pairs
@@ -20,21 +21,24 @@ namespace CellsOfInterest
         private const float Padding = 8f;
         private const float LabelGap = 6f;
 
-        // Fallback anchor (bottom-right of ssOverlayCanvas) used whenever OverlayLegend isn't
-        // present/active — e.g. the selected building's ViewMode is None, so the game never
-        // shows its own overlay box.
-        private const float FallbackOffsetX = -12f;
-        private const float FallbackOffsetY = 220f;
-
-        // Gap between our panel's right edge and OverlayLegend's left edge when docked beside it.
-        // No standard inter-panel spacing constant was evident in the OverlayLegend/OverlayScreen
-        // decompile, so this keeps the value this feature shipped with.
-        private const float OverlayGapPx = 8f;
-
-        // Positioner throttle: OverlayLegend's active rect can appear/move a frame after our
-        // Show(), and again whenever the player switches buildings, so recheck a few times a
-        // second rather than once at Show() only.
-        private const float RepositionIntervalSeconds = 0.25f;
+        // Fixed top-right anchor on ssOverlayCanvas, in canvas units, measured from the canvas's
+        // top-right corner with the panel pivoted at its own top-right.
+        //
+        // These land the panel exactly where it used to sit when the game's OverlayLegend happened
+        // to be showing: flush against the left edge of that box, top-aligned with it. Measured off
+        // a 2560x1440 capture where the panel rendered 285 px wide for PanelWidth = 250, so the
+        // canvas scales at about 1.14 px per unit; our right edge sat at x 2179 and the game's box
+        // ran 2180 to 2536. Units rather than pixels is what makes that resolution-independent -
+        // the sidebar this clears is laid out in the same canvas units by the same scaler.
+        //
+        // A constant replaces the previous behaviour of docking to OverlayLegend's live rect, which
+        // put the panel top-right while an overlay was up and bottom-right otherwise. The player
+        // reads this panel while placing a building and should not have to find it first (operator
+        // directive). Everything the docking needed - a 4 Hz Reposition poll, the OverlayLegend
+        // singleton lookup, two canvas-camera resolutions and a world-to-screen-to-local round trip
+        // - is deleted rather than parameterised, because a fixed anchor needs none of it.
+        private const float TopRightOffsetX = -334f;
+        private const float TopRightOffsetY = -104f;
 
         // A row names the class it explains rather than carrying a literal color, so its swatch
         // resolves through the same CoiPalette.For call the tint quads use and cannot describe a
@@ -91,7 +95,6 @@ namespace CellsOfInterest
             refs++;
             currentMask = -1; // rows still belong to the previous preview; force the next publish
             panel.SetActive(true);
-            Reposition(); // don't wait for the next throttled recheck to land in the right spot
         }
 
         // Rebuilds visible legend rows to match `mask` (one bit per Rows[] index, set exactly
@@ -116,14 +119,10 @@ namespace CellsOfInterest
             }
 
             var panelRt = panel.GetComponent<RectTransform>();
+            // No repositioning after a height change. The pivot is the panel's top-right corner and
+            // the anchor is fixed, so growing sizeDelta extends the box downward and the top edge
+            // never moves. The old bottom-pivot layout had to recentre here on every row change.
             panelRt.sizeDelta = new Vector2(PanelWidth, slot * RowHeight + Padding * 2f);
-            // Reposition centers the panel on OverlayLegend from rt.rect.height, which the line
-            // above just changed, and the panel's pivot is (1, 0) — so skipping it pins the bottom
-            // edge and leaves the box off-center by half the delta until the Positioner's next tick
-            // a quarter second later. Not a case for that throttle: the Positioner polls because
-            // OverlayLegend can move without telling us, whereas this height change is ours, and
-            // Redraw has already dropped every cell change that did not alter the mask.
-            Reposition();
 
             // Decision: panel visible iff refs > 0 AND at least one row is visible (zero rows over
             // solid ground must stay hidden even while refs > 0). refs > 0 nearly always holds here
@@ -184,13 +183,14 @@ namespace CellsOfInterest
             bg.raycastTarget = false;
 
             var rt = panel.GetComponent<RectTransform>();
-            rt.anchorMin = new Vector2(1f, 0f);
-            rt.anchorMax = new Vector2(1f, 0f);
-            rt.pivot = new Vector2(1f, 0f);
-            rt.anchoredPosition = new Vector2(FallbackOffsetX, FallbackOffsetY);
+            rt.anchorMin = new Vector2(1f, 1f);
+            rt.anchorMax = new Vector2(1f, 1f);
+            rt.pivot = new Vector2(1f, 1f);
+            rt.anchoredPosition = new Vector2(TopRightOffsetX, TopRightOffsetY);
             // Zero-rows height: every row starts inactive below, and SetRows resizes this the
             // moment the owning controller publishes its first mask (same frame, before render —
-            // see CoiTintController.Start), so this value never actually shows.
+            // see CoiTintController.Start), so this value never actually shows. With the top-right
+            // pivot the resize grows downward from the anchored top edge.
             rt.sizeDelta = new Vector2(PanelWidth, Padding * 2f);
 
             for (int i = 0; i < Rows.Length; i++)
@@ -241,96 +241,7 @@ namespace CellsOfInterest
                 rowGo.SetActive(false); // no mask published yet; SetRows decides visibility/slot
             }
 
-            panel.AddComponent<Positioner>();
-
             panel.SetActive(false);
-        }
-
-        // Repositions our panel flush to the left of the game's OverlayLegend box (the "Plumbing
-        // Overlay" / "Power Overlay" panel shown while a ViewMode overlay is active), vertically
-        // centered on it. Falls back to the fixed bottom-right anchor when OverlayLegend isn't
-        // present/active (e.g. the current building's ViewMode is None, so the game never shows it).
-        private static void Reposition()
-        {
-            if (panel == null)
-                return;
-
-            var rt = panel.GetComponent<RectTransform>();
-            var parentRt = panel.transform.parent as RectTransform;
-            if (parentRt == null)
-                return;
-
-            RectTransform overlayRt = ResolveOverlayLegendRect();
-            if (overlayRt == null)
-            {
-                rt.anchoredPosition = new Vector2(FallbackOffsetX, FallbackOffsetY);
-                return;
-            }
-
-            // anchorMin == anchorMax == (1, 0) (bottom-right pivot), so anchoredPosition is measured
-            // from the parent rect's (xMax, yMin) corner - reproduce that reference point here so we
-            // can go straight from "desired pivot position" to anchoredPosition without touching anchors.
-            Rect parentRect = parentRt.rect;
-            Vector2 referencePoint = new Vector2(parentRect.xMax, parentRect.yMin);
-
-            var corners = new Vector3[4]; // GetWorldCorners order: bottom-left, top-left, top-right, bottom-right
-            overlayRt.GetWorldCorners(corners);
-
-            Camera fromCam = CanvasCameraFor(overlayRt);
-            Camera toCam = CanvasCameraFor(parentRt);
-
-            Vector2 screenTopLeft = RectTransformUtility.WorldToScreenPoint(fromCam, corners[1]);
-            Vector2 screenBottomLeft = RectTransformUtility.WorldToScreenPoint(fromCam, corners[0]);
-
-            RectTransformUtility.ScreenPointToLocalPointInRectangle(parentRt, screenTopLeft, toCam, out Vector2 localTopLeft);
-            RectTransformUtility.ScreenPointToLocalPointInRectangle(parentRt, screenBottomLeft, toCam, out Vector2 localBottomLeft);
-
-            float overlayLeftX = localTopLeft.x;
-            float overlayCenterY = (localTopLeft.y + localBottomLeft.y) * 0.5f;
-            float panelHeight = rt.rect.height;
-
-            Vector2 desiredPivot = new Vector2(overlayLeftX - OverlayGapPx, overlayCenterY - panelHeight * 0.5f);
-            rt.anchoredPosition = desiredPivot - referencePoint;
-        }
-
-        // OverlayLegend.Instance is the game's own singleton (OverlayLegend.cs:53: `public static
-        // OverlayLegend Instance;`, assigned in OnSpawn, cleared in OnLoadLevel) - reading it is a
-        // static field access, not a scene scan, so there's nothing worth caching on top of it.
-        // ClearLegend() -> Show(show:false) -> KScreen.Show(bool) -> `gameObject.SetActive(show)`
-        // (confirmed in the real game assembly's decompile, not just the stripped modding stub),
-        // so activeInHierarchy is exactly "no overlay box right now."
-        private static RectTransform ResolveOverlayLegendRect()
-        {
-            OverlayLegend instance = OverlayLegend.Instance;
-            if (instance == null || !instance.gameObject.activeInHierarchy)
-                return null;
-            return instance.transform as RectTransform;
-        }
-
-        private static Camera CanvasCameraFor(RectTransform rt)
-        {
-            Canvas canvas = rt.GetComponentInParent<Canvas>();
-            if (canvas == null)
-                return null;
-            canvas = canvas.rootCanvas;
-            return canvas.renderMode == RenderMode.ScreenSpaceOverlay ? null : canvas.worldCamera;
-        }
-
-        // A few-times-a-second recheck: OverlayLegend's active rect can appear a frame after our
-        // Show(), and its position/visibility changes as the player switches between buildings while
-        // the build tool stays active, so Show() alone isn't enough to stay docked correctly.
-        private sealed class Positioner : MonoBehaviour
-        {
-            private float nextCheckTime;
-
-            private void LateUpdate()
-            {
-                float now = Time.unscaledTime;
-                if (now < nextCheckTime)
-                    return;
-                nextCheckTime = now + RepositionIntervalSeconds;
-                Reposition();
-            }
         }
 
         private static TMP_FontAsset FindFont()
