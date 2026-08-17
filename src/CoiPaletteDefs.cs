@@ -12,11 +12,6 @@ namespace CellsOfInterest
         public Color Liquid { get; }
         public Color Solid { get; }
 
-        // There is no CoiClass.Heat yet, so nothing reads this: CoiPalette.For has no arm that
-        // returns it and no other caller exists. The slot is filled now anyway: the three
-        // colorblind sets are graded on whether all five classes stay mutually distinguishable
-        // under simulation, and grading four of them is a different, easier test that would have
-        // to be redone the moment heat existed. Filling it late would mean tuning twice.
         public Color Heat { get; }
 
         internal CoiPaletteDef(Color work, Color gas, Color liquid, Color solid, Color heat)

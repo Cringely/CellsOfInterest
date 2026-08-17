@@ -45,6 +45,7 @@ namespace CellsOfInterest
             (CoiClass.Output, CoiPhase.Liquid, "Liquid output"),
             (CoiClass.Output, CoiPhase.Gas,    "Gas output"),
             (CoiClass.Output, CoiPhase.Solid,  "Solid / item drop"),
+            (CoiClass.Heat,   CoiPhase.None,   "Heat exchange"),
         };
 
         // One persistent row container per Rows[] index (holds that row's swatch + label as
@@ -133,16 +134,19 @@ namespace CellsOfInterest
         }
 
         // Maps an entry's (class, phase) to its Rows[] index, matching CoiPalette.For's fold
-        // exactly: Work ignores phase (folded to None, the phase its row carries), and every
-        // output phase except Liquid/Gas is drawn in the Solid color, so it shares the Solid row.
+        // exactly: Output is the only class that varies by phase, so Work and Heat fold to None
+        // (the phase their rows carry) whatever they were built with, and every output phase except
+        // Liquid/Gas is drawn in the Solid color and shares the Solid row. Testing `!= Output`
+        // rather than listing the phaseless classes means a class added later folds correctly
+        // without an edit here; a class that DOES vary by phase would need one.
         // Scans Rows[] instead of hardcoding indices so Rows[] stays the only place row identity
         // and order are declared (reordering or renaming a row cannot silently desync this lookup
         // from the array a maintainer is actually looking at). Returns -1 for a class with no row
-        // yet (e.g. CoiClass.Heat before step 7 adds one) — callers must ignore that bit rather
-        // than shift by it, since C# masks the shift count and 1 << -1 sets bit 31.
+        // at all — callers must ignore that bit rather than shift by it, since C# masks the shift
+        // count and 1 << -1 sets bit 31.
         public static int RowIndexFor(CoiClass cls, CoiPhase phase)
         {
-            CoiPhase canonical = cls == CoiClass.Work ? CoiPhase.None
+            CoiPhase canonical = cls != CoiClass.Output ? CoiPhase.None
                 : phase == CoiPhase.Liquid || phase == CoiPhase.Gas ? phase : CoiPhase.Solid;
             for (int i = 0; i < Rows.Length; i++)
                 if (Rows[i].cls == cls && Rows[i].phase == canonical)

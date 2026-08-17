@@ -6,7 +6,10 @@ using UnityEngine;
 
 namespace CellsOfInterest
 {
-    public enum CoiClass { Work, Output }
+    // Ordinal order is also stripe order on a shared cell (CoiTintController.StripeOf), so a class
+    // appended here lands to the right of the existing ones. Not persisted anywhere, so unlike
+    // PaletteChoice this carries no wire-format constraint.
+    public enum CoiClass { Work, Output, Heat }
 
     public enum CoiPhase { None, Gas, Liquid, Solid }
 
@@ -90,6 +93,7 @@ namespace CellsOfInterest
 
             AddWork(go, entries);
             AddOutputs(def, go, entries);
+            AddHeat(def, go, entries);
             entries.RemoveAll(e => !Enabled(e));
 
             return entries.Count == 0 ? CoiData.Empty : new CoiData { Entries = entries.ToArray() };
@@ -103,8 +107,15 @@ namespace CellsOfInterest
         private static bool Enabled(CoiEntry e)
         {
             CoiSettings s = CoiConfig.Active;
+            // Both non-output classes gate on e.Cls, before the phase switch, because both carry
+            // CoiPhase.None and the switch's default arm answers None with TintSolid. Heat reaching
+            // that arm would read the wrong setting - TintSolid, default true - with no compile
+            // error, so this test is what makes the Heat toggle mean anything. AddHeat itself is
+            // deliberately ungated: one gate, in the one place every class is gated.
             if (e.Cls == CoiClass.Work)
                 return s.TintWork;
+            if (e.Cls == CoiClass.Heat)
+                return s.TintHeat;
             switch (e.Phase)
             {
                 case CoiPhase.Gas: return s.TintGas;
@@ -112,9 +123,6 @@ namespace CellsOfInterest
                 // Solid, None, and anything outside the enum. Same fold as CoiPalette.For, which
                 // has no None arm either: the toggle that hides a cell is named after the color the
                 // cell is drawn in, so "Solid outputs: off" cannot leave a purple cell on screen.
-                // Step 7 caution: spec section 8 gives heat entries CoiPhase.None, so CoiClass.Heat
-                // needs its own arm on e.Cls above or it silently gates on TintSolid (default true)
-                // instead of TintHeat (default false), with no compile error.
                 default: return s.TintSolid;
             }
         }
@@ -283,6 +291,112 @@ namespace CellsOfInterest
                 if (piped)
                     entries.Add(CoiEntry.AtCell(CoiClass.Output, portOffset, deterministic: false, rotates: true, portPhase));
             }
+        }
+
+        // Buildings whose thermal rectangle is not their footprint's bounding box, as deltas on
+        // that box: (xMin, xMax, yMin, yMax), negative widening left/down. Deltas rather than
+        // absolute rects so the Steam Turbine row can say what the game says - the same box, one
+        // row lower - instead of a 5x4 literal that silently goes wrong if Klei resizes the def.
+        //
+        // Produced by sweeping the decompiled Assembly-CSharp (game build shipping with the Aquatic
+        // Planet Pack) for StructureTemperaturePayload.OverrideExtents. That found exactly four call
+        // sites in three shapes, all four listed here. Keyed on PrefabID rather than reflecting each
+        // config's private `overrideOffsets` array, which no compile error would protect; the cost
+        // is that a game update adding a fifth override passes unnoticed, so re-run that sweep when
+        // the game updates. A building missing from this table falls back to its bounding box, which
+        // is what the game does for every building that does not override.
+        private static readonly Dictionary<string, (int xMin, int xMax, int yMin, int yMax)> ExtentsOverrides
+            = new Dictionary<string, (int, int, int, int)>
+        {
+            // Tempshift Plate: def is 1x1, reach is 3x3 centred on the cell. The single biggest
+            // reason this class exists - nothing in the game's UI says the plate is 3x3.
+            // ThermalBlockConfig.overrideOffsets = the four diagonals.
+            { "ThermalBlock",   (-1, 1, -1, 1) },
+            // Ice-Cooled Fan: def is 2x2 (box x 0..1, y 0..1), reach is x -2..2, y 0..1.
+            // IceCooledFanConfig.overrideOffsets = (-2,1),(2,1),(-1,0),(1,0).
+            { "IceCooledFan",   (-2, 1,  0, 0) },
+            // Steam Turbine, both the base-game and the DLC config: new Extents(x, y - 1, width,
+            // height + 1). One row BELOW the footprint, which is how it reaches into the steam room
+            // and is invisible in the UI.
+            { "SteamTurbine",   ( 0, 0, -1, 0) },
+            { "SteamTurbine2",  ( 0, 0, -1, 0) },
+        };
+
+        // Thermal contact cells (spec §8): which cells this building actually touches the heat sim
+        // over. Deliberately NOT the placement footprint - the placement ghost already draws that,
+        // and the buildings a player most needs this for are exactly the ones where the two differ.
+        //
+        // This does not consult AddWork's Workable exclusion list, and the divergence is deliberate.
+        // That list asks whether a Workable is the building's primary operation; this asks whether
+        // the game registers the building for structure heat at all. They agree on doors and tiles
+        // only because those are SimCellOccupier and fail the thermal gate for an unrelated reason.
+        private static void AddHeat(BuildingDef def, GameObject go, List<CoiEntry> entries)
+        {
+            // Tile- and door-likes become sim solids on spawn and exchange heat as world cells
+            // rather than as a structure, so there is no structure rectangle to draw.
+            if (go.GetComponent<SimCellOccupier>() != null)
+                return;
+            if (def.PlacementOffsets == null || def.PlacementOffsets.Length == 0)
+                return;
+
+            // Conduction Panel shape, and the one case that is a cell SET rather than a rectangle.
+            // StructureToStructureTemperature exchanges with a BUILDING, not with the world, over
+            // DefineConductiveCells = placement cells minus the utility input cell minus the utility
+            // output cell. For the stock 3x1 ContactConductivePipeBridge that leaves only the middle
+            // cell, which is why the panel does nothing at all unless something is built on that
+            // cell - the most common way it is misplaced, and not visible anywhere in the UI.
+            //
+            // Deliberate under-report, corrected against the assembly after the spec was written:
+            // ContactConductivePipeBridgeConfig ALSO sets UseStructureTemperature = true, so the
+            // panel additionally exchanges with the world over its full 3x1 box, and this branch
+            // returns without drawing that. Painting all three would say nothing - the box is
+            // already the placement ghost on a 3-cell building - while erasing the one cell that
+            // decides whether the panel functions. Ceiling: on a modded StructureToStructureTemperature
+            // building whose footprint is large enough for the box to be news, the world-contact
+            // cells go undrawn. Upgrade path is a second class or phase so both can be shown at
+            // once, which §9 striping would then place side by side; not worth it for one stock
+            // building whose whole point is the middle cell.
+            if (go.GetComponent<StructureToStructureTemperature>() != null)
+            {
+                foreach (CellOffset off in def.PlacementOffsets)
+                    if (!off.Equals(def.UtilityInputOffset) && !off.Equals(def.UtilityOutputOffset))
+                        entries.Add(CoiEntry.AtCell(CoiClass.Heat, off, deterministic: false, rotates: true));
+                return;
+            }
+
+            if (!def.UseStructureTemperature)
+                return;
+
+            // Everything else registers an Extents RECTANGLE, never a cell set: Building.RefreshCells
+            // builds it as the bounding box of the rotated PlacementOffsets and hands it to
+            // SimMessages.AddBuildingHeatExchange. So a non-rectangular footprint conducts over its
+            // bounding box, a superset of its placement cells, and drawing PlacementOffsets here
+            // would under-report exactly those buildings.
+            int xMin = int.MaxValue, xMax = int.MinValue, yMin = int.MaxValue, yMax = int.MinValue;
+            foreach (CellOffset off in def.PlacementOffsets)
+            {
+                if (off.x < xMin) xMin = off.x;
+                if (off.x > xMax) xMax = off.x;
+                if (off.y < yMin) yMin = off.y;
+                if (off.y > yMax) yMax = off.y;
+            }
+
+            if (ExtentsOverrides.TryGetValue(def.PrefabID, out var d))
+            {
+                xMin += d.xMin;
+                xMax += d.xMax;
+                yMin += d.yMin;
+                yMax += d.yMax;
+            }
+
+            // Deterministic: false, so contact cells draw at candidate alpha. They cover more screen
+            // area than every other class put together and must not shout over the work cell. That
+            // also routes them through CoiTintController's Grid.Solid cull, which drops the ones
+            // sitting in solid terrain - wanted here, since a plate's reach into un-dug rock is not
+            // a placement decision the player is making.
+            for (int y = yMin; y <= yMax; y++)
+                for (int x = xMin; x <= xMax; x++)
+                    entries.Add(CoiEntry.AtCell(CoiClass.Heat, new CellOffset(x, y), deterministic: false, rotates: true));
         }
 
         // Element phase for an output. Null-guarded: FindElementByHash returns null for an

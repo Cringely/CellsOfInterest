@@ -21,6 +21,9 @@ namespace CellsOfInterest
         {
             CoiPaletteDef palette = CoiPaletteDefs.Get(CoiConfig.Active.Palette);
             if (cls == CoiClass.Work) return palette.Work;
+            // Heat carries CoiPhase.None, which the switch below folds into Solid, so it needs its
+            // arm here for the same reason CoiResolver.Enabled does.
+            if (cls == CoiClass.Heat) return palette.Heat;
             switch (phase)
             {
                 case CoiPhase.Liquid: return palette.Liquid;
