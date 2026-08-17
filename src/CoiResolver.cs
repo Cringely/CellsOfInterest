@@ -20,6 +20,7 @@ namespace CellsOfInterest
         public bool Deterministic;  // solid tint vs low-alpha candidate
         public bool Rotates;        // explicit work offsets only (spec: rotation rules)
         public bool IsWorldOffset;  // float world-space offset (outputs) vs integer CellOffset
+        public bool FromCellCenter; // world offsets only: origin is the cell centre, not the transform
         public CellOffset Cell;
         public Vector2 World;
 
@@ -28,8 +29,25 @@ namespace CellsOfInterest
 
         // No default for phase: every caller is an Output, and CoiPalette.For folds CoiPhase.None
         // into its Solid arm, so an omitted phase would silently paint an output the wrong color.
-        public static CoiEntry AtWorld(CoiClass cls, Vector2 world, CoiPhase phase)
-            => new CoiEntry { Cls = cls, World = world, IsWorldOffset = true, Deterministic = true, Phase = phase };
+        //
+        // fromCellCenter names which ORIGIN the game adds this offset to, because the game does not
+        // use one origin for all of them and reading it as if it did put two stock buildings' drop
+        // cell a row below the truth. A building's transform sits at Grid.CellToPosCBC - the cell's
+        // horizontal centre but only 0.01 above its floor (Grid.cs, CellToPosCBC passes
+        // HalfCellSizeInMeters for x and the literal 0.01f for y) - while CellToPosCCC is the middle
+        // of the cell in both axes. The two therefore differ by 0.49 in y and not at all in x, and
+        // Grid.PosToCell floors, so choosing the wrong one moves the answer down a row for any
+        // offset whose fractional y is at least 0.5 and leaves every whole-number offset looking
+        // fine. Which is why this went unnoticed: the default for both offsets is zero.
+        //
+        //   false, the transform: ElementConverter.cs:548 and BuildingElementEmitter.cs:103 both
+        //   build `transform.GetPosition() + offset` and PosToCell that.
+        //   true, the cell centre: ComplexFabricator.cs:1213/1256 spawns the product at
+        //   `Grid.CellToPosCCC(Grid.PosToCell(this), Ore) + outputOffset`, and Storage.Store puts a
+        //   stored item at `Grid.CellToPosCCC(Grid.PosToCell(this), Move)` before MakeWorldActive
+        //   Translates it by dropOffset, so both are measured from the centre.
+        public static CoiEntry AtWorld(CoiClass cls, Vector2 world, CoiPhase phase, bool fromCellCenter = false)
+            => new CoiEntry { Cls = cls, World = world, IsWorldOffset = true, Deterministic = true, Phase = phase, FromCellCenter = fromCellCenter };
     }
 
     public sealed class CoiData
@@ -209,15 +227,28 @@ namespace CellsOfInterest
             // The piped-port branch at the end of this method is the one exception: a conduit port
             // is not an emission site, it IS rotated (BuildingDef.cs:855, Building.cs:297-301), and
             // its entry is built with rotates: true. See that branch's own comment.
+            //
+            // They do NOT all share an origin, though, which is a separate axis from rotation and a
+            // separate axis from whether the offset is integer or float. The two float arms that
+            // measure from the cell centre pass fromCellCenter: true; CoiEntry.AtWorld carries the
+            // evidence for each. Do not add a float-offset arm without deciding which origin its
+            // emission site uses - the difference is half a cell and only shows on some buildings.
             var gen = go.GetComponent<EnergyGenerator>();
             if (gen != null && gen.formula.outputs != null)
                 foreach (var o in gen.formula.outputs)
                     if (!o.store)
                         entries.Add(CoiEntry.AtCell(CoiClass.Output, o.emitOffset, deterministic: true, rotates: false, PhaseOf(o.element)));
 
+            // storeProduced alone is not the game's test for whether anything reaches the floor.
+            // ComplexFabricator.CompleteOrder stores a result when `storeProduced ||
+            // recipeElement.storeElement` (ComplexFabricator.cs:1253/1279/1288), so a building can
+            // leave storeProduced false and still store every result it can make. Chemical Refinery
+            // is exactly that: ChemicalRefineryConfig sets storeProduced true and then clears it,
+            // and all four of its recipes carry a single storeElement: true result, so the cell this
+            // arm used to tint purple never receives anything. Ask the recipes instead.
             var fab = go.GetComponent<ComplexFabricator>();
-            if (fab != null && !fab.storeProduced)
-                entries.Add(CoiEntry.AtWorld(CoiClass.Output, new Vector2(fab.outputOffset.x, fab.outputOffset.y), CoiPhase.Solid));
+            if (fab != null && !fab.storeProduced && AnyRecipeResultDrops(go))
+                entries.Add(CoiEntry.AtWorld(CoiClass.Output, new Vector2(fab.outputOffset.x, fab.outputOffset.y), CoiPhase.Solid, fromCellCenter: true));
 
             var conv = go.GetComponent<ElementConverter>();
             if (conv != null && conv.outputElements != null)
@@ -231,7 +262,7 @@ namespace CellsOfInterest
 
             var storage = go.GetComponent<Storage>();
             if (storage != null && storage.dropOffset != Vector2.zero)
-                entries.Add(CoiEntry.AtWorld(CoiClass.Output, storage.dropOffset, CoiPhase.Solid));
+                entries.Add(CoiEntry.AtWorld(CoiClass.Output, storage.dropOffset, CoiPhase.Solid, fromCellCenter: true));
 
             // Piped outputs (step 5, spec §7). `store`/`storeProduced`/`storeOutput` above all mean
             // "goes into this building's own Storage" (EnergyGenerator.cs:354-368,
@@ -409,6 +440,53 @@ namespace CellsOfInterest
             for (int y = yMin; y <= yMax; y++)
                 for (int x = xMin; x <= xMax; x++)
                     entries.Add(CoiEntry.AtCell(CoiClass.Heat, new CellOffset(x, y), deterministic: false, rotates: true));
+        }
+
+        // Does any recipe this fabricator can run leave a result on the floor?
+        //
+        // A product is stored when `storeProduced || result.storeElement`; the caller has already
+        // ruled out storeProduced, so only storeElement is read here. Melted results are excluded
+        // because that arm of CompleteOrder (ComplexFabricator.cs:1288) does nothing whatsoever
+        // when the result is not stored - it never instantiates an object, so there is nothing to
+        // land anywhere. No stock building exercises that exclusion: both Melted results in the
+        // game, Glass Forge's molten glass and Uranium Centrifuge's molten uranium, sit on
+        // storeProduced: true buildings the caller already rejected. It costs one comparison and it
+        // keeps a modded recipe from advertising a drop for mass the game silently discards.
+        //
+        // The lookup mirrors ComplexFabricator.GetRecipes (ComplexFabricator.cs:1120) exactly: the
+        // same PrefabTag key and the same DLC filter. Rejected calling GetRecipes() itself, which
+        // would have been one line: it memoises into the private recipe_list field and seeds
+        // mostRecentRecipeSelectionByCategory, and the object here is def.BuildingComplete, the
+        // shared prefab every future instance is cloned from. CoiResolver writes to nothing else it
+        // inspects and should not start with a game prefab.
+        //
+        // Scanning the whole recipe table per fabricator is O(recipes) - a few hundred - and runs
+        // once per BuildingDef behind CoiResolver's cache.
+        private static bool AnyRecipeResultDrops(GameObject go)
+        {
+            KPrefabID prefabID = go.GetComponent<KPrefabID>();
+            if (prefabID == null)
+                return false; // no PrefabTag, so no recipe can be matched; assert nothing
+
+            Tag fabricator = prefabID.PrefabTag;
+            foreach (ComplexRecipe recipe in ComplexRecipeManager.Get().recipes)
+            {
+                if (recipe.results == null || recipe.fabricators == null)
+                    continue;
+                if (!recipe.fabricators.Contains(fabricator))
+                    continue;
+                if (!Game.IsCorrectDlcActiveForCurrentSave(recipe))
+                    continue;
+                foreach (ComplexRecipe.RecipeElement result in recipe.results)
+                {
+                    if (result.storeElement)
+                        continue;
+                    if (result.temperatureOperation == ComplexRecipe.RecipeElement.TemperatureOperation.Melted)
+                        continue;
+                    return true;
+                }
+            }
+            return false;
         }
 
         // Element phase for an output. Null-guarded: FindElementByHash returns null for an

@@ -78,13 +78,24 @@ namespace CellsOfInterest
             if (Grid.IsValidCell(baseCell))
             {
                 Vector3 basePos = transform.position;
+                // The two origins a world offset can be measured from. basePos is the building
+                // transform, which BuildTool.cs:190 and BuildingDef.Build:398 both put at
+                // Grid.CellToPosCBC - so the preview and the finished building agree, and an offset
+                // the game adds to transform.position resolves the same either side of placing it.
+                // baseCenter is the middle of the same cell, half a cell higher. CoiEntry.AtWorld
+                // records which one each source uses and why; getting it wrong is a whole row.
+                // Layer is irrelevant here because the z is thrown away below, and it is spelled
+                // CellToPosCCC rather than an equivalent CellToPos call so it reads as the same
+                // thing the emission sites do.
+                Vector3 baseCenter = Grid.CellToPosCCC(baseCell, Grid.SceneLayer.Ore);
                 foreach (var e in data.Entries)
                 {
                     int cell;
                     if (e.IsWorldOffset)
                     {
                         // Output world offsets: raw adds, never rotated (matches emission sites).
-                        cell = Grid.PosToCell(new Vector3(basePos.x + e.World.x, basePos.y + e.World.y, 0f));
+                        Vector3 origin = e.FromCellCenter ? baseCenter : basePos;
+                        cell = Grid.PosToCell(new Vector3(origin.x + e.World.x, origin.y + e.World.y, 0f));
                     }
                     else
                     {
