@@ -6,7 +6,8 @@ namespace CellsOfInterest
 {
     // Screen-space legend explaining CoiTintController's swatch colors, pinned to a fixed top-right
     // anchor so the player always finds it in the same place. Visible exactly while a
-    // build-tool preview has live tints: CoiTintController.Start/OnDestroy call Show/Hide 1:1.
+    // build-tool preview has live tints: CoiTintController.Start/OnDestroy call Show/Hide 1:1,
+    // pairing a Hide only with a Show that reported it took a reference (see Show).
     // OnActivateTool double-fires (BuildToolPatch.cs) and re-selecting a building destroys the OLD
     // preview's controller AFTER the NEW one's Start already ran (BuildTool.cs), so Show/Hide pairs
     // can interleave — this is refcounted rather than a bool so no ordering assumption is needed.
@@ -83,7 +84,11 @@ namespace CellsOfInterest
         private static int currentMask = -1;
         public static int CurrentMask => currentMask;
 
-        public static void Show()
+        // True when this call took a reference, and the caller must pair a Hide() with exactly
+        // that answer. A false return means no panel exists to reference-count; a Hide() paired
+        // with it would decrement a count some OTHER live controller owns, hiding the shared panel
+        // and leaving SetRows' `refs > 0 && slot > 0` false for the rest of that preview.
+        public static bool Show()
         {
             if (panel == null)
             {
@@ -91,10 +96,11 @@ namespace CellsOfInterest
                 refs = 0; // fresh panel: a stale count from a dead canvas would never reach zero
             }
             if (panel == null)
-                return; // no screen-space canvas yet (e.g. called before GameScreenManager exists)
+                return false; // no screen-space canvas yet (e.g. called before GameScreenManager exists)
             refs++;
             currentMask = -1; // rows still belong to the previous preview; force the next publish
             panel.SetActive(true);
+            return true;
         }
 
         // Rebuilds visible legend rows to match `mask` (one bit per Rows[] index, set exactly

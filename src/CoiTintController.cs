@@ -41,11 +41,11 @@ namespace CellsOfInterest
             // computed orientation never is), and always publishes (Show reset the legend's
             // currentMask to -1, which no real mask equals). Reasoned from Unity's documented
             // Start -> Update -> LateUpdate -> Render phase order, not from a live capture.
+            // legendShown is what Show() ANSWERED, never an assumption that it worked: a Show that
+            // found no canvas took no reference, and an OnDestroy that decremented anyway would
+            // hide a panel another live controller is still using.
             if (data.Entries.Length > 0)
-            {
-                CoiLegend.Show();
-                legendShown = true;
-            }
+                legendShown = CoiLegend.Show();
         }
 
         private void LateUpdate()
