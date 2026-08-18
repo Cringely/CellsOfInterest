@@ -24,10 +24,12 @@ namespace CellsOfInterest
         }
     }
 
-    // The named palettes. Default is v1's color set and the only one left: the three palettes
-    // named for colour-vision deficiencies were measured under a simulation of the deficiency each
-    // was named for and did not separate the five classes, so they were removed rather than
-    // shipped as an affordance that does not work.
+    // The one palette. There is no selection and no setting behind it: the three palettes named
+    // for colour-vision deficiencies were measured under a simulation of the deficiency each was
+    // named for, did not separate the five classes, and were removed rather than shipped as an
+    // affordance that does not work. The replacement is a per-class NON-COLOUR channel, hatching
+    // or a border, which needs a setting of its own and would not be selected through a palette
+    // enum - so this is not a seam to hang one on.
     internal static class CoiPaletteDefs
     {
         // Default carries the v1 float literals verbatim, straight out of the pre-v2 CoiPalette.
@@ -44,17 +46,6 @@ namespace CellsOfInterest
             solid:  new Color(0.70f, 0.35f, 0.90f),
             // Heat is new in v2 and has no v1 value to preserve, so it comes from the spec's hex.
             heat:   Hex(0xE6, 0x3C, 0x3C));
-
-        // Every value lands on Default, which is a range check rather than C# exhaustiveness.
-        // PaletteChoice persists to config.json as an ordinal (see CoiSettings) and Newtonsoft
-        // deserializes any integer into the enum without complaint, so a config written while this
-        // enum still had four members - or a hand-edited one - can hand us a 1, 2 or 3 that no
-        // member matches. Landing that on the v1 colors is the conservative answer, and it is what
-        // makes dropping the other three palettes safe for an existing config file.
-        public static CoiPaletteDef Get(PaletteChoice choice)
-        {
-            return Default;
-        }
 
         // Byte channels to Unity's 0..1 floats, the same division Color32's implicit conversion
         // to Color performs, so a hex from the spec lands on the value the engine would have

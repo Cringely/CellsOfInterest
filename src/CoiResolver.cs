@@ -7,8 +7,9 @@ using UnityEngine;
 namespace CellsOfInterest
 {
     // Ordinal order is also stripe order on a shared cell (CoiTintController.StripeOf), so a class
-    // appended here lands to the right of the existing ones. Not persisted anywhere, so unlike
-    // PaletteChoice this carries no wire-format constraint.
+    // appended here lands to the right of the existing ones. Not persisted anywhere, so unlike an
+    // enum on CoiSettings this carries no wire-format constraint - see the note at the top of that
+    // file.
     public enum CoiClass { Work, Output, Heat }
 
     public enum CoiPhase { None, Gas, Liquid, Solid }

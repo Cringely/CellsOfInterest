@@ -46,10 +46,10 @@ namespace CellsOfInterest
 
         // Does the resolved ENTRY SET differ? Only the six toggles below qualify: they decide which
         // entries a BuildingDef produces, and a difference costs a full CoiResolver cache rebuild.
-        // Palette and the alphas are read at render time and leave the entry set intact, so they
-        // must not bump Version. Comparing whole objects instead would flush every cached
-        // BuildingDef on a single alpha-slider tick. Shared-cell striping needs no entry here at
-        // all: it carries no setting.
+        // The alphas are read at render time and leave the entry set intact, so they must not bump
+        // Version. Comparing whole objects instead would flush every cached BuildingDef on a
+        // single alpha-slider tick. Shared-cell striping needs no entry here at all: it carries no
+        // setting.
         //
         // A second hand-maintained list used to sit beside this one, deciding whether Active was
         // replaced at all, and it is deleted rather than maintained. A setting left out of that one
