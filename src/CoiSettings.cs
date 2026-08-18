@@ -2,10 +2,6 @@ using PeterHan.PLib.Options;
 
 namespace CellsOfInterest
 {
-    // No setting here is an enum today. The note survives its subject on purpose, because the
-    // constraint belongs to this class rather than to the enum that used to be below it, and two
-    // comments still point at it: the striping note further down, and CoiClass in CoiResolver.
-    //
     // An enum property on this class persists to config.json as an INTEGER, not a name: the game
     // ships Newtonsoft.Json 7.0.1, nothing here carries a [JsonConverter], and Newtonsoft's default
     // for an enum is its ordinal. So the member order of any enum added here is the on-disk wire

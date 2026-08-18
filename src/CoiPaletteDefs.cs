@@ -35,10 +35,12 @@ namespace CellsOfInterest
         // Default carries the v1 float literals verbatim, straight out of the pre-v2 CoiPalette.
         // The design spec writes the same colors as hex, and those are a rounded readout, not an
         // equivalent: 0.85f reads out as 0xD9, and 217/255f is 0.850980f, a different number.
-        // Round-tripping through hex would move three of four channels on every class. The
-        // shipping invariant is that a v1 player who updates and never opens the options screen
-        // sees no change, and keeping the literals makes that true by construction instead of by
-        // an argument about how small the shift is.
+        // Round-tripping through hex would move 10 of the 12 channels in the four v1 classes.
+        // Only two land on a byte exactly and survive: work red 0.20f (51/255) and gas green
+        // 0.60f (153/255). Liquid and Solid move all three. The shipping invariant is that a v1
+        // player who updates and never opens the options screen sees no change, and keeping the
+        // literals makes that true by construction instead of by an argument about how small the
+        // shift is.
         public static readonly CoiPaletteDef Default = new CoiPaletteDef(
             work:   new Color(0.20f, 0.85f, 0.25f),
             gas:    new Color(0.95f, 0.60f, 0.15f),
