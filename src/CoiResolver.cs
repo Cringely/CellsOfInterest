@@ -110,6 +110,18 @@ namespace CellsOfInterest
             return data;
         }
 
+        // Drops every cached answer, on colony load. Build's inputs are not all per-def:
+        // AnyRecipeResultDrops filters recipes through Game.IsCorrectDlcActiveForCurrentSave, which
+        // is per-SAVE state. This dictionary is static and the mod's statics outlive a quit to the
+        // main menu, so without this, loading save A, hovering a fabricator, then loading save B
+        // with a different DLC set serves A's answer for the rest of B's session - and the two only
+        // ever disagree on a modded or DLC-gated recipe, so it fails quietly when it fails.
+        //
+        // cacheVersion is deliberately left alone. It tracks CoiConfig.Version, which a colony load
+        // does not change, so resetting it would only make the next Get flush an already-empty
+        // dictionary.
+        public static void Clear() => cache.Clear();
+
         private static CoiData Build(BuildingDef def)
         {
             var go = def.BuildingComplete;
@@ -529,5 +541,18 @@ namespace CellsOfInterest
             cell = default;
             return false;
         }
+    }
+
+    // Colony-load hook for CoiResolver's cache. Game is the game-scene singleton, so its OnSpawn
+    // runs once per colony load - new game or loaded save - and before any build tool can be
+    // activated in that colony, which is the only thing that repopulates the cache. Verified
+    // against the Assembly-CSharp this project references: Game declares OnSpawn itself, as a
+    // protected virtual override taking no parameters with an IL body, so Harmony resolves it by
+    // name. Rejected: Game.OnPrefabInit, which fires earlier in the same object's lifecycle than a
+    // cache nothing reads until a build tool opens has any use for.
+    [HarmonyPatch(typeof(Game), "OnSpawn")]
+    public static class Game_OnSpawn_Patch
+    {
+        public static void Postfix() => CoiResolver.Clear();
     }
 }
