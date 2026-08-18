@@ -424,7 +424,13 @@ namespace CellsOfInterest
             // ports, already excluded above as SimCellOccupier, so nothing was learned from their
             // absence either. The check stays anyway: it costs one comparison and it holds if a mod
             // ever re-registers one of the four IDs below with structure temperature turned off.
-            if (!ExtentsOverrides.TryGetValue(def.PrefabID, out var d) || !def.UseStructureTemperature)
+            //
+            // Order is load-bearing, not style. Dictionary.TryGetValue is not null-safe: a def
+            // carrying a null PrefabID throws ArgumentNullException out of the lookup, Get's catch
+            // swallows it, and the building loses EVERY tint it has - work cells included - behind
+            // one warning line. Testing the field first keeps the lookup off that path for any def
+            // that has already opted out of structure temperature.
+            if (!def.UseStructureTemperature || !ExtentsOverrides.TryGetValue(def.PrefabID, out var d))
                 return;
 
             int xMin = int.MaxValue, xMax = int.MinValue, yMin = int.MaxValue, yMax = int.MinValue;
