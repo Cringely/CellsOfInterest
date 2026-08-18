@@ -34,41 +34,38 @@ namespace CellsOfInterest
                 return;
             }
 
-            Compare(Active, loaded, out bool anyChanged, out bool entrySetChanged);
-            if (!anyChanged)
-                return;
-
+            // Compared before the store, because after it both arguments are the same object.
+            bool entrySetChanged = Compare(Active, loaded);
+            // Unconditional. Every reader takes Active as a whole reference and nothing mutates one
+            // in place, so replacing it on each activation costs a single store and is the only
+            // form of this that cannot silently drop an edit - see Compare.
             Active = loaded;
             if (entrySetChanged)
                 Version++;
         }
 
-        // Both field lists live here, side by side, so adding a setting without deciding which
-        // list it belongs to is a visible omission rather than a silent default.
+        // Does the resolved ENTRY SET differ? Only the six toggles below qualify: they decide which
+        // entries a BuildingDef produces, and a difference costs a full CoiResolver cache rebuild.
+        // Palette and the alphas are read at render time and leave the entry set intact, so they
+        // must not bump Version. Comparing whole objects instead would flush every cached
+        // BuildingDef on a single alpha-slider tick. Shared-cell striping needs no entry here at
+        // all: it carries no setting.
         //
-        // anyChanged replaces Active. entrySetChanged additionally bumps Version, and only the
-        // six toggles below qualify: they decide which entries a BuildingDef produces. Palette and
-        // the alphas are read at render time and leave the entry set intact, so they must not bump
-        // Version. Comparing whole objects instead would flush every cached BuildingDef on a single
-        // alpha-slider tick. Shared-cell striping needs no entry here at all: it carries no setting.
-        //
-        // Floats compare exactly on purpose. These values round-trip through one JSON file, so
-        // any difference at all is a real edit, and an epsilon would only hide small ones.
-        private static void Compare(CoiSettings a, CoiSettings b, out bool anyChanged, out bool entrySetChanged)
+        // A second hand-maintained list used to sit beside this one, deciding whether Active was
+        // replaced at all, and it is deleted rather than maintained. A setting left out of that one
+        // was discarded on load and read its default for the rest of the session, invisibly and
+        // permanently. Leaving a new toggle out of THIS list is still a bug - its change would not
+        // flush the resolver cache, so the toggle would look like it did nothing - but that is
+        // bounded by the next flush of that cache, where the Active omission was bounded by nothing.
+        private static bool Compare(CoiSettings a, CoiSettings b)
         {
-            entrySetChanged =
+            return
                 a.TintWork != b.TintWork ||
                 a.TintGas != b.TintGas ||
                 a.TintLiquid != b.TintLiquid ||
                 a.TintSolid != b.TintSolid ||
                 a.TintPipedOutputs != b.TintPipedOutputs ||
                 a.TintHeat != b.TintHeat;
-
-            anyChanged = entrySetChanged ||
-                a.Palette != b.Palette ||
-                a.AlphaSolid != b.AlphaSolid ||
-                a.AlphaCandidate != b.AlphaCandidate ||
-                a.ConfigFileFormat != b.ConfigFileFormat;
         }
     }
 }
