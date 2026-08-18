@@ -8,14 +8,12 @@ namespace CellsOfInterest
     // Append new members at the end, never insert or reorder — inserting silently shifts every
     // existing player's saved value by one, with no error and no migration.
 
-    // Named palettes. Default is the v1 color set; the other three are tuned against the
-    // matching color-vision deficiency.
+    // Named palettes. Default is the v1 color set, and since the three color-vision-deficiency
+    // palettes were measured and dropped (see CoiPaletteDefs) it is the only member left. Ordinal
+    // 0 is still the wire value, so Default stays first.
     public enum PaletteChoice
     {
-        Default,
-        Deuteranopia,
-        Protanopia,
-        Tritanopia
+        Default
     }
 
     // Mod options, surfaced by PLib POptions in the Mods menu and persisted to config.json.
@@ -48,7 +46,10 @@ namespace CellsOfInterest
         // never appears in the dialog.
         public int ConfigFileFormat { get; set; } = 1;
 
-        [Option("Palette", "Color set used for every tint class.")]
+        // Deliberately not an [Option]: a dropdown with a single entry is clutter. The property
+        // stays so the config.json key keeps round-tripping and a file written by an earlier v2
+        // build still loads unchanged - an out-of-range ordinal left in one lands on Default in
+        // CoiPaletteDefs.Get.
         public PaletteChoice Palette { get; set; } = PaletteChoice.Default;
 
         [Option("Work cells", "Tint the cells a duplicant operates the building from.", "Tint classes")]

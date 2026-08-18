@@ -24,8 +24,10 @@ namespace CellsOfInterest
         }
     }
 
-    // The four named palettes. Default is v1's color set; the other three are tuned against the
-    // matching color-vision deficiency.
+    // The named palettes. Default is v1's color set and the only one left: the three palettes
+    // named for colour-vision deficiencies were measured under a simulation of the deficiency each
+    // was named for and did not separate the five classes, so they were removed rather than
+    // shipped as an affordance that does not work.
     internal static class CoiPaletteDefs
     {
         // Default carries the v1 float literals verbatim, straight out of the pre-v2 CoiPalette.
@@ -43,58 +45,15 @@ namespace CellsOfInterest
             // Heat is new in v2 and has no v1 value to preserve, so it comes from the spec's hex.
             heat:   Hex(0xE6, 0x3C, 0x3C));
 
-        // Deuteranopia and Protanopia start from one set: both are red-green deficiencies, so
-        // separation has to live on the blue-orange-purple axis with luminance steps either way.
-        // They are written out twice rather than aliased because the in-game retune grades them
-        // under two different simulations and may well split them; sharing one def would make a
-        // fix for one silently change the other.
-        //
-        // Values are Okabe-Ito. Untuned starting points: the spec's acceptance test is that the
-        // five classes stay mutually distinguishable under that deficiency's simulation and stay
-        // off the desaturated build-mode background, and that check has not been run yet.
-        //
-        // Heat is the tightest pair here — #D55E00 and gas #E69F00 both read yellow-orange under
-        // red-green simulation and separate on luminance alone. If they collapse in-game, the
-        // spec's fallback is heat at #F0E442, rechecked against the background rather than
-        // against the other classes.
-        public static readonly CoiPaletteDef Deuteranopia = new CoiPaletteDef(
-            work:   Hex(0x00, 0x72, 0xB2),
-            gas:    Hex(0xE6, 0x9F, 0x00),
-            liquid: Hex(0x56, 0xB4, 0xE9),
-            solid:  Hex(0xCC, 0x79, 0xA7),
-            heat:   Hex(0xD5, 0x5E, 0x00));
-
-        public static readonly CoiPaletteDef Protanopia = new CoiPaletteDef(
-            work:   Hex(0x00, 0x72, 0xB2),
-            gas:    Hex(0xE6, 0x9F, 0x00),
-            liquid: Hex(0x56, 0xB4, 0xE9),
-            solid:  Hex(0xCC, 0x79, 0xA7),
-            heat:   Hex(0xD5, 0x5E, 0x00));
-
-        // Tritanopia is a blue-yellow deficiency, so it moves off the axis the two above use.
-        // Okabe-Ito again except heat, which is Paul Tol's muted #882255 so it sits in the same
-        // family as the rest of this column. Heat and solid #CC6677 separate on luminance, which
-        // makes them the pair to check first during the retune.
-        public static readonly CoiPaletteDef Tritanopia = new CoiPaletteDef(
-            work:   Hex(0x00, 0x9E, 0x73),
-            gas:    Hex(0xD5, 0x5E, 0x00),
-            liquid: Hex(0x11, 0x77, 0x33),
-            solid:  Hex(0xCC, 0x66, 0x77),
-            heat:   Hex(0x88, 0x22, 0x55));
-
+        // Every value lands on Default, which is a range check rather than C# exhaustiveness.
+        // PaletteChoice persists to config.json as an ordinal (see CoiSettings) and Newtonsoft
+        // deserializes any integer into the enum without complaint, so a config written while this
+        // enum still had four members - or a hand-edited one - can hand us a 1, 2 or 3 that no
+        // member matches. Landing that on the v1 colors is the conservative answer, and it is what
+        // makes dropping the other three palettes safe for an existing config file.
         public static CoiPaletteDef Get(PaletteChoice choice)
         {
-            switch (choice)
-            {
-                case PaletteChoice.Deuteranopia: return Deuteranopia;
-                case PaletteChoice.Protanopia: return Protanopia;
-                case PaletteChoice.Tritanopia: return Tritanopia;
-                // Not just C# exhaustiveness. PaletteChoice persists to config.json as an ordinal
-                // (see CoiSettings), and Newtonsoft will deserialize any integer into the enum
-                // without complaint, so a hand-edited or future-version config can hand us a value
-                // no member matches. Landing that on the v1 colors is the conservative answer.
-                default: return Default;
-            }
+            return Default;
         }
 
         // Byte channels to Unity's 0..1 floats, the same division Color32's implicit conversion
