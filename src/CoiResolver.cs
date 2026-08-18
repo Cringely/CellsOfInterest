@@ -437,12 +437,16 @@ namespace CellsOfInterest
             // absence either. The check stays anyway: it costs one comparison and it holds if a mod
             // ever re-registers one of the four IDs below with structure temperature turned off.
             //
-            // Order is load-bearing, not style. Dictionary.TryGetValue is not null-safe: a def
-            // carrying a null PrefabID throws ArgumentNullException out of the lookup, Get's catch
+            // Dictionary.TryGetValue is not null-safe, hence the middle test: a def carrying a null
+            // PrefabID answers the lookup with ArgumentNullException rather than false, Get's catch
             // swallows it, and the building loses EVERY tint it has - work cells included - behind
-            // one warning line. Testing the field first keeps the lookup off that path for any def
-            // that has already opted out of structure temperature.
-            if (!def.UseStructureTemperature || !ExtentsOverrides.TryGetValue(def.PrefabID, out var d))
+            // one warning line. UseStructureTemperature defaults to true, so ordering the cheap
+            // flag first is not on its own enough; almost every def still reaches the lookup.
+            // Guarded here rather than at the producer because the producer is a third-party mod's
+            // BuildingDef, which this repo has no seam to write to.
+            if (!def.UseStructureTemperature
+                || string.IsNullOrEmpty(def.PrefabID)
+                || !ExtentsOverrides.TryGetValue(def.PrefabID, out var d))
                 return;
 
             int xMin = int.MaxValue, xMax = int.MinValue, yMin = int.MaxValue, yMax = int.MinValue;
