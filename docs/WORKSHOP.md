@@ -29,7 +29,6 @@ A small color guide appears next to the game's own legend while you place the bu
 There is an options screen on the mod's row in the Mods menu. You can ignore it entirely and the mod still works out of the box. What you can change:
 
 [list]
-[*][b]Palette[/b]: the standard colors, or one of three other color sets (Deuteranopia, Protanopia, Tritanopia). Fair warning, these three were checked against a simulation of the color blindness each is named for and did not keep the colors apart, so pick whichever one you find easiest to read rather than expecting it to fix anything.
 [*][b]Turn colors off[/b]: work, gas, liquid and solid each have their own switch. Switching one off also removes its row from the color guide.
 [*][b]Opacity[/b]: one slider for the tiles the mod is sure about, another for the faint "probably here" ones.
 [*][b]Piped outputs[/b] (off by default): when a building sends its output down a pipe instead of into the room, this colors the tile the pipe connects to.

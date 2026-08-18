@@ -20,7 +20,6 @@ Farm tiles, pure storage (Storage Bin and the like), tiles, ladders, and wires r
 
 The mod's row in the Mods menu has an Options button. Settings are saved to `config.json` next to the DLL, and a change applies the next time you pick a building, with no colony reload. The defaults reproduce what the mod drew before the options existed, so updating and changing nothing looks the same as it did.
 
-- **Palette**: Default (the colors above), plus three alternative color sets named Deuteranopia, Protanopia, and Tritanopia. Those three were measured against a simulation of the deficiency each is named for and did not keep the five classes apart, so treat them as alternative palettes to pick by eye, not as a colorblind fix.
 - **Per-class toggles** for work, gas, liquid, and solid. Switching a class off drops both its tint and its legend row.
 - **Opacity sliders**, one for the cells the mod resolved exactly and one for the candidates it could only infer. Both run from 0.10 to 0.90, defaulting to 0.55 and 0.25.
 - **Piped outputs**, off by default. For an output that leaves down a conduit instead of into the room, this tints the building's pipe port cell, colored by what comes out of it.
