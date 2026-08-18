@@ -35,10 +35,10 @@ namespace CellsOfInterest
             }
 
             // Compared before the store, because after it both arguments are the same object.
-            bool entrySetChanged = Compare(Active, loaded);
+            bool entrySetChanged = Differs(Active, loaded);
             // Unconditional. Every reader takes Active as a whole reference and nothing mutates one
             // in place, so replacing it on each activation costs a single store and is the only
-            // form of this that cannot silently drop an edit - see Compare.
+            // form of this that cannot silently drop an edit - see Differs.
             Active = loaded;
             if (entrySetChanged)
                 Version++;
@@ -57,7 +57,7 @@ namespace CellsOfInterest
         // permanently. Leaving a new toggle out of THIS list is still a bug - its change would not
         // flush the resolver cache, so the toggle would look like it did nothing - but that is
         // bounded by the next flush of that cache, where the Active omission was bounded by nothing.
-        private static bool Compare(CoiSettings a, CoiSettings b)
+        private static bool Differs(CoiSettings a, CoiSettings b)
         {
             return
                 a.TintWork != b.TintWork ||
