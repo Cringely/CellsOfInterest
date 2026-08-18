@@ -72,11 +72,9 @@ namespace CellsOfInterest
         // the reflow writes anchoredPosition straight through instead of a GetComponent per row.
         private static readonly RectTransform[] rows = new RectTransform[Rows.Length];
 
-        // Built once per colony and never recolored. The only in-game writer of config.json is
-        // PLib's options dialog, which hangs off ModsScreen, and MainMenu.Mods() is that screen's
-        // only instantiation site in Assembly-CSharp; reaching it tears down the game scene and
-        // GameScreenManager's canvas, so Show finds panel == null and rebuilds the swatches from
-        // the new palette. An edit made outside the game mid-colony is stale until the next load.
+        // Built once per colony and never recolored: a swatch's color is written once, where
+        // CreatePanel builds it, from CoiPalette.For - which reads CoiPaletteDefs.Default
+        // unconditionally and consults no setting, so nothing in config.json can put one out of date.
         private static GameObject panel;
         private static int refs;
 
