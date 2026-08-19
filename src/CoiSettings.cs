@@ -70,7 +70,12 @@ namespace CellsOfInterest
         [Limit(0.10, 0.90)]
         public float AlphaSolid { get; set; } = 0.55f;
 
-        [Option("Candidate cell opacity", "Opacity of cells the mod could only infer.", "Opacity", Format = "F2")]
+        // "Could only infer" was wrong on three of the four sites this alpha governs. CoiTintController
+        // keys alpha on Deterministic alone, and the pipe port (def.UtilityOutputOffset) and the two
+        // heat arms are fixed geometry rather than guesses - they are non-deterministic only in the
+        // sense that the mod does not claim the game will use that exact cell. A player who dragged
+        // this down to suppress guessy work cells was also fading two features they had turned on.
+        [Option("Candidate cell opacity", "Opacity of cells the mod did not resolve exactly. Covers inferred work cells, and also the heat and pipe-port cells.", "Opacity", Format = "F2")]
         [Limit(0.10, 0.90)]
         public float AlphaCandidate { get; set; } = 0.25f;
     }

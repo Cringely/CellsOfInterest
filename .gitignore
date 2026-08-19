@@ -4,3 +4,5 @@ docs/superpowers/
 docs/specs/
 .claude/
 docs/WORKSHOP.md
+
+dist/

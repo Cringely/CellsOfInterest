@@ -6,7 +6,14 @@
     <AssemblyName>CellsOfInterest</AssemblyName>
     <RootNamespace>CellsOfInterest</RootNamespace>
     <GameLibsFolder>F:\SteamLibrary\steamapps\common\OxygenNotIncluded\OxygenNotIncluded_Data\Managed</GameLibsFolder>
-    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    <!-- ONI renders the assembly version in the mods list, so leaving these unset shipped the
+         mod as "v.0.0.0.0". Bump alongside mod_info.yaml on every release; the two are read by
+         different screens and drift silently. -->
+    <GenerateAssemblyInfo>true</GenerateAssemblyInfo>
+    <Version>2.0.0</Version>
+    <AssemblyVersion>2.0.0.0</AssemblyVersion>
+    <FileVersion>2.0.0.0</FileVersion>
+    <Product>Cells of Interest</Product>
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
   </PropertyGroup>
 

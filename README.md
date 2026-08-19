@@ -12,18 +12,18 @@ When you place a building, the mod paints translucent overlays on the cells that
 
 When one cell is more than one thing at once (a work cell that also sends something out, or two outputs together), the cell splits into vertical stripes rather than blending the colors together. Each stripe keeps its own color rather than mixing into a third one you can't look up.
 
-A small legend appears next to the game's own overlay legend while you're placing, showing only the rows present in the building you're holding. It shares the preview's lifecycle: no build tool, nothing drawn, nothing running.
+A small legend appears at the top right of the screen while you're placing, clear of the overlay info panel, showing only the rows present in the building you're holding. It shares the preview's lifecycle: no build tool, nothing drawn, nothing running.
 
 Farm tiles, pure storage (Storage Bin and the like), tiles, ladders, and wires resolve to nothing and stay untinted.
 
 ## Options
 
-The mod's row in the Mods menu has an Options button. Settings are saved to `config.json` next to the DLL, and a change applies the next time you pick a building, with no colony reload. The defaults reproduce what the mod drew before the options existed, so updating and changing nothing looks the same as it did.
+The mod's row in the Mods menu has an Options button. Settings are saved to `config.json` next to the DLL, and a change applies the next time you pick a building, with no colony reload. Every default carries its v1 value, so a v1 player who updates and never opens the dialog keeps the same tints. Three things still change on upgrade, because all three were defects rather than preferences: cells with more than one class now stripe instead of blending, the legend lists only the classes actually present, and it sits at a fixed top-right anchor instead of docking to the overlay panel.
 
 - **Per-class toggles** for work, gas, liquid, and solid. Switching a class off drops both its tint and its legend row.
-- **Opacity sliders**, one for the cells the mod resolved exactly and one for the candidates it could only infer. Both run from 0.10 to 0.90, defaulting to 0.55 and 0.25.
+- **Opacity sliders**, one for the cells the mod resolved exactly and one for the rest. The second also governs the heat and pipe-port cells, which are fixed geometry rather than guesses but are not claimed as the exact cell the game will use. Both run from 0.10 to 0.90, defaulting to 0.55 and 0.25.
 - **Piped outputs**, off by default. For an output that leaves down a conduit instead of into the room, this tints the building's pipe port cell, colored by what comes out of it.
-- **Heat exchange**, off by default. This tints the cells a building trades heat over, and only for the buildings whose thermal reach is not their own footprint: Tempshift Plate, Ice-E Fan, Steam Turbine, and Conduction Panel. Every other building draws nothing here, because its reach is exactly the footprint you are already placing.
+- **Heat exchange (red)**, off by default. This tints the cells a building trades heat over, and only for the buildings whose thermal reach is not their own footprint: Tempshift Plate, Ice-E Fan, Steam Turbine, and Conduction Panel. Every other building draws nothing here, because its reach is exactly the footprint you are already placing. Heat cells are drawn only where the cell is not already solid, so a plate placed against rock or tile shows fewer than nine.
 
 ## Compatibility
 
@@ -45,18 +45,22 @@ then enable it in the in-game mods menu.
 
 ## Build from source
 
-Classic non-SDK C# project targeting .NET Framework 4.8. Build with MSBuild (not `dotnet build`):
+SDK-style C# project targeting .NET Framework 4.8:
 
 ```
-MSBuild.exe "CellsOfInterest.csproj" -t:Rebuild -p:Configuration=Debug
+dotnet build -c Release
 ```
 
-The `.csproj` references the game's assemblies by absolute `HintPath` into your `OxygenNotIncluded_Data/Managed/` folder. On a new machine, repoint those paths to that machine's Managed folder before building.
+The build pulls PLib from NuGet and ILRepack merges it into `CellsOfInterest.dll`, so the mod ships as one file with no loose `PLib.dll` beside it. Use `dotnet build` rather than a bare `MSBuild -t:Rebuild`, which skips restore and fails on a clean clone with `NETSDK1004: Assets file 'obj\project.assets.json' not found`.
+
+The `.csproj` references the game's assemblies through the `GameLibsFolder` property, set to an absolute path into `OxygenNotIncluded_Data/Managed/`. On a new machine, repoint that one property before building.
 
 ## Credits
 
 Idea by [u/Jaaaameslol](https://www.reddit.com/user/Jaaaameslol/), who [asked on r/Oxygennotincluded](https://www.reddit.com/r/Oxygennotincluded/comments/1uxlji1/tiles_of_interest_mod/) for a mod that shows a building's tiles of interest. Here it is.
 
+The options screen is built with [PLib](https://github.com/peterhaneve/ONIMods) by Peter Han, which is merged into the shipped DLL and used under the MIT license.
+
 ## License
 
-MIT. See [LICENSE](LICENSE).
+MIT. See [LICENSE](LICENSE), which also carries PLib's copyright notice.
