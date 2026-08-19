@@ -35,7 +35,10 @@ namespace CellsOfInterest
         // at 398 units, about 1.111 px per unit, and that panel rendering 277 px wide for
         // PanelWidth 250 gives 1.108 the other way. A right edge near 2104 - 2114 less about 10 px
         // of gap - is 410.6 units on either reading, so -411 puts it at 2103.6 and the gap at
-        // 10.4 px. Units rather than pixels is what keeps this resolution-independent: the panel
+        // 10.4 px. Measured back on a redeployed -411 build at 2560x1440, against Room Overlay
+        // with a preview up: left edge 1826, right edge 2103, panel border 2114, gap 11 px. The
+        // 278 px width for PanelWidth 250 is 1.112 px per unit, matching the prediction.
+        // Units rather than pixels is what keeps this resolution-independent: the panel
         // being cleared is laid out in the same canvas units by the same scaler. The price of one
         // constant against an edge that moves is 38 px or more of dead gap under every overlay
         // except Room.
