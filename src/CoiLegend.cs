@@ -25,23 +25,33 @@ namespace CellsOfInterest
         // Fixed top-right anchor on ssOverlayCanvas, in canvas units, measured from the canvas's
         // top-right corner with the panel pivoted at its own top-right.
         //
-        // X is set to clear the game's overlay info panel, whose left edge measured x 2124 on a
-        // 2560x1440 capture and read 2124 under the power, liquid, gas and automation overlays
-        // alike - it does not move per overlay, so one constant clears all of them. The scale
-        // comes from this anchor itself: a right edge 375 px in from the canvas edge at 334 units
-        // is about 1.12 px per unit, so a right edge near 2114 (about 10 px of gap) works out to
-        // 397.2 units. Rounded out to 398 because the same capture read the panel about 273 px
-        // wide for PanelWidth 250, i.e. about 1.09 px per unit, and -398 keeps the gap between 9
-        // and 11 px on either reading of the scale. Units rather than pixels is what makes this
-        // resolution-independent - the sidebar this clears is laid out in the same canvas units
-        // by the same scaler.
+        // X clears the game's overlay info panel, whose left edge is not one number. Sweeping all
+        // 22 overlay views at 2560x1440 puts it at 2152 (power, gas, liquid), 2181 (thirteen more,
+        // with suit at 2179), and 2114 for Room Overlay - an outlier by 38 px, four views drawing
+        // no panel at all. Room is therefore the only case worth calibrating against; its 2114 is
+        // the outer border, its title bar starting at 2118.
         //
-        // The previous -334 reproduced where the panel had sat back when it docked to the game's
-        // box, off a reading that put that box's left edge at 2180. It is 2124, so the reproduced
-        // position overlapped the box by about 61 px and painted over it - which the player hits
-        // constantly, because picking a building auto-switches the overlay that panel belongs to.
-        // Y came off the same capture but from the vertical alignment rather than that edge, and
-        // is unchanged.
+        // Scale, off the shipped -398 build: a right edge at 2118 is 442 px in from the canvas edge
+        // at 398 units, about 1.111 px per unit, and that panel rendering 277 px wide for
+        // PanelWidth 250 gives 1.108 the other way. A right edge near 2104 - 2114 less about 10 px
+        // of gap - is 410.6 units on either reading, so -411 puts it at 2103.6 and the gap at
+        // 10.4 px. Units rather than pixels is what keeps this resolution-independent: the panel
+        // being cleared is laid out in the same canvas units by the same scaler. The price of one
+        // constant against an edge that moves is 38 px or more of dead gap under every overlay
+        // except Room.
+        //
+        // This constant has been wrong twice, both times for the same reason - calibrating against
+        // whichever overlay was up and taking its edge for the general one. -334 reproduced where
+        // the panel sat while it still docked, against a box edge read at 2180; that matches the
+        // 2181 cluster and was probably a correct reading of a non-binding case, but it overlapped
+        // power's panel at 2152. -398 was calibrated against an edge reported as "2124, constant
+        // across four overlays", which was not the panel at all: a wall or ladder runs vertically
+        // at x 2118..2128 in the test colony and merely desaturates to grey when an overlay
+        // switches on, which is exactly what an invariant panel edge would look like. Scenery sits
+        // within a few pixels of where this panel appears, so identify the panel by its title-bar
+        // colour (248,132,191 at rows y 104..134) and confirm those pixels are absent in a frame
+        // with no overlay up. Y is untouched by either miss: it came off the vertical alignment of
+        // the old docked position, and misreading a vertical structure yields an x-range and no y.
         //
         // A constant replaces the previous behaviour of docking to OverlayLegend's live rect, which
         // put the panel top-right while an overlay was up and bottom-right otherwise. The player
@@ -49,7 +59,7 @@ namespace CellsOfInterest
         // directive). Everything the docking needed - a 4 Hz Reposition poll, the OverlayLegend
         // singleton lookup, two canvas-camera resolutions and a world-to-screen-to-local round trip
         // - is deleted rather than parameterised, because a fixed anchor needs none of it.
-        private const float TopRightOffsetX = -398f;
+        private const float TopRightOffsetX = -411f;
         private const float TopRightOffsetY = -104f;
 
         // A row names the class it explains rather than carrying a literal color, so its swatch
