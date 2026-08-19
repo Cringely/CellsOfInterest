@@ -38,7 +38,7 @@ namespace CellsOfInterest
         // HalfCellSizeInMeters for x and the literal 0.01f for y) - while CellToPosCCC is the middle
         // of the cell in both axes. The two therefore differ by 0.49 in y and not at all in x, and
         // Grid.PosToCell floors, so choosing the wrong one moves the answer down a row for any
-        // offset whose fractional y is at least 0.5 and leaves every whole-number offset looking
+        // offset whose fractional y falls between 0.5 and 0.99, and leaves every other offset looking
         // fine. Which is why this went unnoticed: the default for both offsets is zero.
         //
         //   false, the transform: ElementConverter.cs:548 and BuildingElementEmitter.cs:103 both
