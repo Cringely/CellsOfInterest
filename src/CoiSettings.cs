@@ -70,12 +70,15 @@ namespace CellsOfInterest
         [Limit(0.10, 0.90)]
         public float AlphaSolid { get; set; } = 0.55f;
 
-        // "Could only infer" was wrong on three of the four sites this alpha governs. CoiTintController
-        // keys alpha on Deterministic alone, and the pipe port (def.UtilityOutputOffset) and the two
-        // heat arms are fixed geometry rather than guesses - they are non-deterministic only in the
-        // sense that the mod does not claim the game will use that exact cell. A player who dragged
-        // this down to suppress guessy work cells was also fading two features they had turned on.
-        [Option("Candidate cell opacity", "Opacity of cells the mod did not resolve exactly. Covers inferred work cells, and also the heat and pipe-port cells.", "Opacity", Format = "F2")]
+        // Describe what the slider MOVES, never why those cells are faint. CoiTintController keys
+        // alpha on Deterministic alone, and only one of the four deterministic:false sites is an
+        // inference - the unknown-Workable pivot at CoiResolver.cs:240. The pipe port is
+        // def.UtilityOutputOffset and the two heat arms come from the game's own OverrideExtents,
+        // both fixed geometry; heat is flagged non-deterministic for a rendering reason stated at
+        // CoiResolver.cs:466, not an epistemic one. Two earlier wordings ("could only infer", then
+        // "did not resolve exactly") both asserted doubt the code does not have, and a player who
+        // dragged this down to suppress guessy work cells was fading two features they turned on.
+        [Option("Candidate cell opacity", "Opacity of the faint tints: inferred work cells, and the heat and pipe-port cells.", "Opacity", Format = "F2")]
         [Limit(0.10, 0.90)]
         public float AlphaCandidate { get; set; } = 0.25f;
     }
