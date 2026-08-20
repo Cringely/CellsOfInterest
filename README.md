@@ -18,7 +18,7 @@ Farm tiles, pure storage (Storage Bin and the like), tiles, ladders, and wires r
 
 ## Options
 
-The mod's row in the Mods menu has an Options button. Settings are saved to `config.json` next to the DLL, and a change applies the next time you pick a building, with no colony reload. Every default carries its v1 value, so a v1 player who updates and never opens the dialog keeps the same colors and opacities. Some of what those settings draw did change, all of it defect fixes rather than preferences: cells with more than one class now stripe instead of blending, the legend lists only the classes actually present and sits at a fixed top-right anchor instead of docking to the overlay panel, Valves no longer get a work cell they never had, and on a few buildings the solid-drop cell moved to the row the game actually drops into.
+The mod's row in the Mods menu has an Options button. Settings are saved to `config.json` under `Documents/Klei/OxygenNotIncluded/mods/config/CellsOfInterest/`, outside the mod folder so a Workshop update does not wipe them, and a change applies the next time you pick a building, with no colony reload. Every default carries its v1 value, so a v1 player who updates and never opens the dialog keeps the same colors and opacities. Some of what those settings draw did change, all of it defect fixes rather than preferences: cells with more than one class now stripe instead of blending, the legend lists only the classes actually present and sits at a fixed top-right anchor instead of docking to the overlay panel, Valves no longer get a work cell they never had, and on a few buildings the solid-drop cell moved to the row the game actually drops into.
 
 - **Per-class toggles** for work, gas, liquid, and solid. Switching a class off drops both its tint and its legend row.
 - **Opacity sliders**, one for the solid tints and one for the faint ones. The faint slider covers inferred work cells, and also the heat and pipe-port cells, which are drawn faint so they do not shout over the rest rather than because the mod is unsure of them. Both run from 0.10 to 0.90, defaulting to 0.55 and 0.25.
@@ -29,7 +29,7 @@ The mod's row in the Mods menu has an Options button. Settings are saved to `con
 
 - Base Game and Spaced Out, one DLL.
 - Tested with FastTrack enabled.
-- Nothing is written into your save. Adding or removing the mod never touches it, and your settings live in `config.json` beside the DLL rather than in the colony.
+- Nothing is written into your save. Adding or removing the mod never touches it, and your settings live in `config.json` under `mods/config/CellsOfInterest/` rather than in the colony.
 
 ## Install
 

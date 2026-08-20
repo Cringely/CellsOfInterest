@@ -32,6 +32,16 @@ namespace CellsOfInterest
     //
     // Changing any default here changes what an existing player sees on upgrade; it is not a free
     // edit.
+    // SharedConfigLocation moves config.json out of the mod folder and into
+    // Documents/Klei/OxygenNotIncluded/mods/config/CellsOfInterest/ (POptions.GetConfigPath:
+    // Manager.GetDirectory() + "config" + assembly name). Without it PLib writes the file inside
+    // the mod's own directory, which ONI's mod manager deletes and re-copies on every Workshop
+    // update, so every update would silently reset the player's settings. PLib's documented cost is
+    // that the shared file may not be removed when the mod is uninstalled.
+    //
+    // Set before the first Workshop publish, when there are no subscribers and so nothing to
+    // migrate. Changing it after release strands every existing config at the old path.
+    [ConfigFile(SharedConfigLocation: true)]
     public sealed class CoiSettings
     {
         // Format version of the persisted file, carried so a later release can migrate a config
