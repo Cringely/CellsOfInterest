@@ -6,7 +6,7 @@ An Oxygen Not Included mod that tints a building's important cells while you pla
 
 When you place a building, the mod paints translucent overlays on the cells that matter for the building you're holding:
 
-- **Output cells** show where the building sends what it makes, colored by what comes out: cyan for liquid, amber for gas, violet for a solid item dropped on the floor.
+- **Output cells** show where the building sends what it makes, colored by what comes out: cyan for liquid, amber for gas, violet for a solid, whether that is dropped on the floor or handed to a conveyor rail.
 - **Work cells (green)** show where a duplicant stands to run the building.
 - **Candidate work cells (faint green)** mark the likely stand cell when the exact one depends on terrain the game only picks at task time.
 
@@ -23,7 +23,7 @@ The mod's row in the Mods menu has an Options button. Settings are saved to `con
 - **Per-class toggles** for work, gas, liquid, and solid. Switching a class off drops both its tint and its legend row.
 - **Opacity sliders**, one for the solid tints and one for the faint ones. The faint slider covers inferred work cells, and also the heat and pipe-port cells, which are drawn faint so they do not shout over the rest rather than because the mod is unsure of them. Both run from 0.10 to 0.90, defaulting to 0.55 and 0.25.
 - **Piped outputs**, off by default. For an output that leaves down a conduit instead of into the room, this tints the building's pipe port cell, colored by what comes out of it.
-- **Heat exchange (red)**, off by default. This tints the cells a building trades heat over, and only for the buildings whose thermal reach is not their own footprint: Tempshift Plate, Ice-E Fan, Steam Turbine, and Conduction Panel. Every other building draws nothing here, because its reach is exactly the footprint you are already placing. Heat cells are drawn only where the cell is not already solid, so a plate placed against rock or tile shows fewer than nine.
+- **Heat exchange (red)**, off by default. This tints the cells a building trades heat over, for the buildings where those are not simply the cells you are placing it on. Tempshift Plate, Ice-E Fan, and Steam Turbine reach past their own footprint; for the Conduction Panel it marks the cell that decides whether the panel works, which is a deliberate under-report of its full contact box. Every other building draws nothing here. Heat cells are drawn only where the cell is not already solid, so a plate placed against rock or tile shows fewer than nine.
 
 ## Compatibility
 

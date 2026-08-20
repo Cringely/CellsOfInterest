@@ -37,9 +37,13 @@ namespace CellsOfInterest
         // horizontal centre but only 0.01 above its floor (Grid.cs, CellToPosCBC passes
         // HalfCellSizeInMeters for x and the literal 0.01f for y) - while CellToPosCCC is the middle
         // of the cell in both axes. The two therefore differ by 0.49 in y and not at all in x, and
-        // Grid.PosToCell floors, so choosing the wrong one moves the answer down a row for any
-        // offset whose fractional y falls between 0.5 and 0.99, and leaves every other offset looking
-        // fine. Which is why this went unnoticed: the default for both offsets is zero.
+        // Grid.PosToCell is (int)(pos.y + 0.05f), so it biases up by 0.05 before truncating: the
+        // CCC row increments once the offset's fractional y reaches 0.45, the CBC row not until
+        // 0.94. Choosing the wrong origin therefore moves the answer down a row for fractional y in
+        // [0.45, 0.94) and leaves every other offset looking fine. Do not restate this window from
+        // the 0.5/0.01 difference alone - that reading has been written down wrong twice, both
+        // times by forgetting the 0.05. Which is why it went unnoticed at all: every arm in this
+        // file uses a fractional y of 0 or 0.5.
         //
         //   false, the transform: ElementConverter.cs:548 and BuildingElementEmitter.cs:103 both
         //   build `transform.GetPosition() + offset` and PosToCell that.
