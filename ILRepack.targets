@@ -1,0 +1,19 @@
+<Project>
+
+  <!-- This file exists to be found, not to do anything. Do not delete it.
+
+       ILRepack.Lib.MSBuild.Task 2.0.46 defines its own ILRepack target guarded by
+       Condition="$(Configuration.Contains('Release')) and !Exists('$(ILRepackTargetsFile)')",
+       where ILRepackTargetsFile defaults to $(MSBuildProjectDirectory)\ILRepack.targets. That
+       target takes whatever assembly is sitting in the output folder as its input and passes no
+       LibraryPath, so on a Release build it re-read the already-merged CellsOfInterest.dll and
+       failed with "Failed to resolve assembly: 'Newtonsoft.Json, Version=7.0.0.0'" — while still
+       leaving a correctly merged DLL on disk, which is the dangerous part: a packaging step that
+       does not check the exit code would ship from a red build.
+
+       The mere existence of this file flips that condition to false and suppresses it. The
+       package still imports this file, and the UsingTask that registers the ILRepack task is
+       unconditional and runs before the import, so ILRepackMergePLib in CellsOfInterest.csproj
+       keeps working in every configuration. -->
+
+</Project>

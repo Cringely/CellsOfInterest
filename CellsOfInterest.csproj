@@ -6,9 +6,24 @@
     <AssemblyName>CellsOfInterest</AssemblyName>
     <RootNamespace>CellsOfInterest</RootNamespace>
     <GameLibsFolder>F:\SteamLibrary\steamapps\common\OxygenNotIncluded\OxygenNotIncluded_Data\Managed</GameLibsFolder>
-    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    <!-- ONI renders the assembly version in the mods list, so leaving these unset shipped the
+         mod as "v.0.0.0.0". Bump alongside mod_info.yaml on every release; the two are read by
+         different screens and drift silently. -->
+    <GenerateAssemblyInfo>true</GenerateAssemblyInfo>
+    <Version>2.0.0</Version>
+    <AssemblyVersion>2.0.0.0</AssemblyVersion>
+    <FileVersion>2.0.0.0</FileVersion>
+    <Product>Cells of Interest</Product>
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
   </PropertyGroup>
+
+  <ItemGroup>
+    <!-- PLib supplies the Mods-menu options screen. ExcludeAssets="runtime" keeps PLib.dll out
+         of the output folder: the mod ships one merged DLL (see ILRepackMergePLib below), never
+         a loose PLib beside it. -->
+    <PackageReference Include="PLib" Version="4.25.0" PrivateAssets="all" ExcludeAssets="runtime" />
+    <PackageReference Include="ILRepack.Lib.MSBuild.Task" Version="2.0.46" PrivateAssets="all" />
+  </ItemGroup>
 
   <ItemGroup>
     <Reference Include="Assembly-CSharp">
@@ -44,5 +59,33 @@
       <Private>false</Private>
     </Reference>
   </ItemGroup>
+
+  <!-- Merge PLib into CellsOfInterest.dll so the player installs one file and PLib's version
+       registry can still let this copy coexist with other mods' PLib.
+
+       The primary input is @(IntermediateAssembly) (obj\), never the file already in the output
+       folder: re-merging an output that was merged by a previous build would feed ILRepack two
+       copies of every PLib type. That makes the target idempotent across incremental builds.
+
+       The ILRepack package also defines its own ILRepack target (AfterTargets="Build", Release
+       only), and it does do harm: it re-reads the already-merged assembly out of the output folder
+       and passes no LibraryPath, which failed Release builds on an unresolvable Newtonsoft.Json.
+       ILRepack.targets in this directory suppresses it; see the comment in that file. This target
+       keeps a distinct name so both can coexist in the import order NuGet imposes. -->
+  <Target Name="ILRepackMergePLib" AfterTargets="Build" Condition="'$(IsCrossTargetingBuild)' != 'true'">
+    <ItemGroup>
+      <PLibToMerge Include="@(ReferencePath)" Condition="'%(Filename)' == 'PLib'" />
+      <ILRepackInput Include="@(IntermediateAssembly)" />
+      <ILRepackInput Include="@(PLibToMerge)" />
+    </ItemGroup>
+    <Error Condition="'@(PLibToMerge)' == ''"
+           Text="PLib was not resolved as a reference, so nothing would be merged and the mod would ship without its options screen." />
+    <ILRepack Parallel="true"
+              DebugInfo="true"
+              InputAssemblies="@(ILRepackInput)"
+              LibraryPath="$(GameLibsFolder)"
+              TargetKind="SameAsPrimaryAssembly"
+              OutputFile="$(OutputPath)$(TargetName)$(TargetExt)" />
+  </Target>
 
 </Project>
